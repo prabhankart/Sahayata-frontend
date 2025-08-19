@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { MapPinIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import PostCard from '../components/PostCard';
 import Spinner from '../components/Spinner';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const CommunityPage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ const CommunityPage = () => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        let url = 'http://localhost:5000/api/posts?';
+        let url = `${API_URL}/api/posts?`;
         const params = new URLSearchParams();
         if (searchQuery) params.append('search', searchQuery);
         if (userLocation) {

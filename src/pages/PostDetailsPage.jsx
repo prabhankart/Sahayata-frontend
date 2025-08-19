@@ -1,24 +1,28 @@
 import { useState, useEffect, useContext } from 'react';
-import { useParams,Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
-import ChatBox from '../components/ChatBox'; // 1. Import the ChatBox
+import ChatBox from '../components/ChatBox';
 import MediaDisplay from '../components/MediaDisplay';
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+
+// Define the base URL for your API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const PostDetailsPage = () => {
   const { id } = useParams();
   const { user } = useContext(AuthContext);
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/posts/${id}`);
+        // Use the dynamic API_URL
+        const { data } = await axios.get(`${API_URL}/api/posts/${id}`);
         setPost(data);
       } catch (error) {
         console.error('Failed to fetch post:', error);
@@ -26,7 +30,6 @@ const PostDetailsPage = () => {
         setLoading(false);
       }
     };
-
     fetchPost();
   }, [id]);
 
@@ -34,28 +37,30 @@ const PostDetailsPage = () => {
     if (!user) return toast.error('You must be logged in to pledge.');
     const config = { headers: { Authorization: `Bearer ${user.token}` } };
     try {
-      const { data } = await axios.put(`http://localhost:5000/api/posts/${post._id}/pledge`, {}, config);
+      // Use the dynamic API_URL
+      const { data } = await axios.put(`${API_URL}/api/posts/${post._id}/pledge`, {}, config);
       setPost(data);
       toast.success('Your pledge has been updated!');
     } catch (error) {
       toast.error('Failed to update pledge.');
     }
   };
-   // --- NEW: Delete Handler ---
+
   const handleDelete = async () => {
-    // Show a confirmation dialog before deleting
     if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        await axios.delete(`http://localhost:5000/api/posts/${id}`, config);
+        // Use the dynamic API_URL
+        await axios.delete(`${API_URL}/api/posts/${id}`, config);
         toast.success('Post deleted successfully');
-        navigate('/community'); // Redirect to the community feed
+        navigate('/community');
       } catch (error) {
         toast.error('Failed to delete the post.');
         console.error('Delete error:', error);
       }
     }
   };
+
 
   if (loading) return <Spinner />;
   if (!post) return <p className="text-center text-red-500 mt-20">Post not found.</p>;

@@ -8,3 +8,6 @@
 body {
  @apply bg-cream text-secondary;
 }
+.leaflet-marker-icon {
+  filter: hue-rotate(200deg) brightness(0.9) saturate(1.5);
+}

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
 import UserCard from '../components/UserCard';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const ConnectPage = () => {
   const { user } = useContext(AuthContext);
@@ -17,8 +18,8 @@ const ConnectPage = () => {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
         // Fetch both users and friendships at the same time
         const [usersRes, friendshipsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/users', config),
-          axios.get('http://localhost:5000/api/friends', config)
+          axios.get(`${API_URL}/api/users`, config),
+          axios.get(`${API_URL}/api/friends`, config)
         ]);
         setUsers(usersRes.data);
         setFriendships(friendshipsRes.data);

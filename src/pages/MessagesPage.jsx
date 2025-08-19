@@ -4,6 +4,10 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import PrivateChatBox from '../components/PrivateChatBox';
 import Spinner from '../components/Spinner';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
+
+// Define the base URL for your API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const MessagesPage = () => {
   const { user } = useContext(AuthContext);
@@ -17,7 +21,8 @@ const MessagesPage = () => {
     const fetchConversations = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        const { data } = await axios.get('http://localhost:5000/api/conversations', config);
+        // Use the dynamic API_URL
+        const { data } = await axios.get(`${API_URL}/api/conversations`, config);
         setConversations(data);
         if (location.state?.conversationId) {
             const preselected = data.find(c => c._id === location.state.conversationId);
@@ -41,7 +46,6 @@ const MessagesPage = () => {
   return (
     <div className="flex h-[calc(100vh-5rem)] bg-cream">
       {/* --- Left Column: Conversation List --- */}
-      {/* On mobile, this column is hidden when a chat is selected */}
       <div className={`w-full md:w-1/3 border-r border-gray-200 bg-surface flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-secondary">Chats</h2>
@@ -67,10 +71,8 @@ const MessagesPage = () => {
       </div>
 
       {/* --- Right Column: Chat Window --- */}
-      {/* On mobile, this column is hidden UNTIL a chat is selected */}
       <div className={`w-full md:w-2/3 flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
-            // Pass a "back" button function to the chat box for mobile view
           <PrivateChatBox 
             key={selectedConversation._id} 
             conversation={selectedConversation}

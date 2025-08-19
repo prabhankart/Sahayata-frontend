@@ -5,6 +5,9 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
 
+// Define the base URL for your API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const EditPostPage = () => {
   const { id } = useParams();
   const { user } = useContext(AuthContext);
@@ -12,18 +15,19 @@ const EditPostPage = () => {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [currentImage, setCurrentImage] = useState(''); // To display the existing image
-  const [imageFile, setImageFile] = useState(null); // For the new selected image
+  const [currentImage, setCurrentImage] = useState('');
+  const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/posts/${id}`);
+        // Use the dynamic API_URL
+        const { data } = await axios.get(`${API_URL}/api/posts/${id}`);
         setTitle(data.title);
         setDescription(data.description);
-        setCurrentImage(data.image); // Set the current image URL
+        setCurrentImage(data.image);
         setLoading(false);
       } catch (error) {
         toast.error('Could not fetch post data.');
@@ -35,17 +39,17 @@ const EditPostPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let imageUrl = currentImage; // Start with the existing image URL
+    let imageUrl = currentImage;
 
-    // Step 1: If a new file is selected, upload it first.
     if (imageFile) {
       setUploading(true);
       const formData = new FormData();
       formData.append('image', imageFile);
       try {
         const config = { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${user.token}` } };
-        const { data } = await axios.post('http://localhost:5000/api/upload', formData, config);
-        imageUrl = data.imageUrl; // Get the new image URL
+        // Use the dynamic API_URL
+        const { data } = await axios.post(`${API_URL}/api/upload`, formData, config);
+        imageUrl = data.imageUrl;
       } catch (error) {
         toast.error('New image upload failed. Please try again.');
         setUploading(false);
@@ -55,11 +59,11 @@ const EditPostPage = () => {
       }
     }
 
-    // Step 2: Update the post with all data (including the new or existing image URL)
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
       const postData = { title, description, image: imageUrl };
-      await axios.put(`http://localhost:5000/api/posts/${id}`, postData, config);
+      // Use the dynamic API_URL
+      await axios.put(`${API_URL}/api/posts/${id}`, postData, config);
       toast.success('Post updated successfully!');
       navigate(`/post/${id}`);
     } catch (error) {
@@ -77,19 +81,18 @@ const EditPostPage = () => {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Title</label>
-              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 text-secondary" />
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary" />
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 h-40 resize-none text-secondary" />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 h-40 resize-none focus:outline-none focus:ring-2 focus:ring-primary text-secondary" />
             </div>
 
-            {/* --- NEW: Image Update Section --- */}
             <div>
               <label className="block text-sm font-medium text-secondary mb-2">Update Image (Optional)</label>
               {currentImage && !imageFile && (
                 <div className="mb-4">
-                  <p className="text-xs text-muted mb-2">Current image:</p>
+                  <p className="text-xs text-muted mb-2">Current media:</p>
                   <img src={currentImage} alt="Current post" className="w-40 h-auto rounded-lg" />
                 </div>
               )}
@@ -101,8 +104,8 @@ const EditPostPage = () => {
               />
             </div>
 
-            <button type="submit" disabled={uploading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-lg text-lg disabled:bg-muted">
-              {uploading ? 'Uploading new image...' : 'Update Request'}
+            <button type="submit" disabled={uploading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300 transform hover:scale-105 shadow-lg disabled:bg-muted">
+              {uploading ? 'Uploading Media...' : 'Update Request'}
             </button>
           </div>
         </form>

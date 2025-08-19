@@ -32,7 +32,7 @@ const CreatePostPage = () => {
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -95,7 +95,7 @@ const handleSuggestTitle = async () => {
       };
 
       // 4. Send the description to the backend AI endpoint
-      const { data } = await axios.post('http://localhost:5000/api/ai/suggest-title', { description }, config);
+      const { data } = await axios.post(`${API_URL}/api/ai/suggest-title`, { description }, config);
       
       // 5. Update the title field with the AI's response
       setTitle(data.title);
@@ -125,7 +125,7 @@ const handleSuggestTitle = async () => {
 
       try {
         const config = { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${user.token}` } };
-        const { data } = await axios.post('http://localhost:5000/api/upload', formData, config);
+        const { data } = await axios.post(`${API_URL}/api/upload`, formData, config);
         imageUrl = data.imageUrl;
       } catch (error) {
         toast.error('Image upload failed. Post was not created.');
@@ -144,7 +144,7 @@ const handleSuggestTitle = async () => {
         location: { coordinates: [position.lng, position.lat] },
       };
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      await axios.post('http://localhost:5000/api/posts', postData, config);
+      await axios.post(`${API_URL}/api/posts`, postData, config);
       toast.success('Help request created successfully!');
       navigate('/community');
     } catch (error) {
