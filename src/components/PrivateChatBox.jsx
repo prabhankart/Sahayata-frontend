@@ -4,9 +4,12 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
-const socket = io('http://localhost:5000');
 
-const PrivateChatBox = ({ conversation ,onBack}) => {
+// Define the base URL for your API
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const socket = io(API_URL);
+
+const PrivateChatBox = ({ conversation, onBack }) => {
   const { user } = useContext(AuthContext);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -17,16 +20,18 @@ const PrivateChatBox = ({ conversation ,onBack}) => {
 
   useEffect(() => {
     socket.emit('joinConversation', { conversationId: conversation._id });
+
     socket.on('receivePrivateMessage', (message) => {
       if (message.conversation === conversation._id) {
         setMessages((prev) => [...prev, message]);
       }
     });
-
+    
     const fetchMessages = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        const { data } = await axios.get(`http://localhost:5000/api/conversations/${conversation._id}/messages`, config);
+        // Use the dynamic API_URL
+        const { data } = await axios.get(`${API_URL}/api/conversations/${conversation._id}/messages`, config);
         setMessages(data);
       } catch (error) {
         toast.error("Could not load chat history.");
@@ -54,13 +59,9 @@ const PrivateChatBox = ({ conversation ,onBack}) => {
   return (
     <>
       <div className="p-4 border-b border-gray-200 bg-surface flex items-center">
-        {/* The new back button, only visible on mobile */}
         <button onClick={onBack} className="md:hidden mr-4 text-muted hover:text-secondary">
           <ArrowLeftIcon className="h-6 w-6" />
         </button>
-        <h3 className="font-bold text-secondary">Chat with {otherParticipant?.name}</h3>
-      </div>
-      <div className="p-4 border-b border-gray-200 bg-surface">
         <h3 className="font-bold text-secondary">Chat with {otherParticipant?.name}</h3>
       </div>
       <div className="flex-grow overflow-y-auto p-4">

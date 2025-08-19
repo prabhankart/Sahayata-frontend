@@ -3,6 +3,7 @@ import { AuthContext } from '../context/AuthContext';
 import io from 'socket.io-client';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const socket = io('http://localhost:5000');
 
@@ -29,7 +30,7 @@ const ChatBox = ({ postId }) => {
     const fetchMessages = async () => {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
-        const { data } = await axios.get(`http://localhost:5000/api/messages/${postId}`, config);
+       const { data } = await axios.get(`${API_URL}/api/messages/${postId}`, config);
         setMessages(data);
       } catch (error) {
         toast.error("Could not load chat history.");
