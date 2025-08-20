@@ -16,10 +16,13 @@ import ConnectPage from './pages/ConnectPage';
 import MessagesPage from './pages/MessagesPage';
 import Breadcrumbs from './components/Breadcrumbs';
 import EditPostPage from './pages/EditPostPage';
+import ScrollToTop from './components/ScrollToTop'; 
+import GuestRoute from './components/GuestRoute';
 
 function App() {
   return (
     <Router>
+       <ScrollToTop />
       <div className="bg-slate-900 min-h-screen text-white">
          <Toaster position="top-center" reverseOrder={false} /> 
         <Navbar /> {/* 2. Add Navbar here */}
@@ -27,8 +30,8 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
            <Route path="/map" element={<MapViewPage />} /> {/* Add the map route */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+          <Route path="/signup" element={<GuestRoute><SignupPage /></GuestRoute>} />
            <Route path="/post/:id" element={<PostDetailsPage />} />
            <Route path="/auth/success" element={<AuthSuccessPage />} />
             <Route path="/help" element={<HelpPage />} /> 

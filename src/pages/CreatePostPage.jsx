@@ -179,20 +179,37 @@ const handleSuggestTitle = async () => {
               <input type="file" accept="image/*, video/mp4, video/quicktime" onChange={(e) => setImageFile(e.target.files[0])} className="w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"/>
             </div>
 
-            <div>
+<div>
               <label className="block text-sm font-medium text-secondary mb-2">Location</label>
-              <form onSubmit={handleLocationSearch} className="flex gap-2 mb-3">
-                <input type="text" value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)} placeholder="Type a city or address..." className="flex-grow p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary"/>
-                <button type="submit" className="bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-2 px-6 rounded-lg">Search</button>
+              
+              {/* --- CORRECTED LOCATION SECTION --- */}
+              {/* This is now a div, not a form. It stacks on mobile. */}
+              <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                <input 
+                  type="text" 
+                  value={locationQuery} 
+                  onChange={(e) => setLocationQuery(e.target.value)} 
+                  placeholder="Type a city or address..." 
+                  className="flex-grow p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary"
+                />
+                <div className="flex gap-2">
+                  <button 
+                    type="button" // Changed from "submit"
+                    onClick={handleLocationSearch} // Changed from onSubmit
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-2 px-6 rounded-lg"
+                  >
+                    Search
+                  </button>
                   <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"
-              >
-                <MapPinIcon className="h-5 w-5 mr-2" />
-                Use Current Location
-              </button>
-              </form>
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    className="flex-1 bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"
+                  >
+                    <MapPinIcon className="h-5 w-5 mr-2" />
+                    <span className="hidden sm:inline">Current Location</span>
+                  </button>
+                </div>
+              </div>
               <p className="text-xs text-muted mb-2">Or click on the map to set a pin.</p>
               <div className="h-80 w-full rounded-lg overflow-hidden border">
                 <MapContainer center={mapCenter} zoom={5} style={{ height: '100%', width: '100%' }}>
