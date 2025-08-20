@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -37,6 +37,9 @@ const CreatePostPage = () => {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+ useEffect(() => {
+    console.log('Uploading state changed to:', uploading);
+  }, [uploading]);
 
   const handleLocationSearch = async (e) => {
     e.preventDefault();
@@ -121,6 +124,7 @@ const handleSuggestTitle = async () => {
     let imageUrl = '';
 
     if (imageFile) {
+        console.log('Image file detected:', imageFile);
       setUploading(true);
       const formData = new FormData();
       formData.append('image', imageFile);
