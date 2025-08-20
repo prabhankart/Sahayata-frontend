@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { MapPinIcon } from '@heroicons/react/24/solid'; 
+import UploadProgress from '../components/UploadProgress'; 
 
 // Helper component to programmatically change the map's view
 function ChangeMapView({ coords }) {
@@ -31,6 +32,7 @@ const CreatePostPage = () => {
   const [locationQuery, setLocationQuery] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+   const [uploadProgress, setUploadProgress] = useState(0); 
   const [isGenerating, setIsGenerating] = useState(false);
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const { user } = useContext(AuthContext);
@@ -122,13 +124,23 @@ const handleSuggestTitle = async () => {
       setUploading(true);
       const formData = new FormData();
       formData.append('image', imageFile);
-
-      try {
-        const config = { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${user.token}` } };
+     try {
+        // --- THIS IS THE CORRECTED CONFIGURATION ---
+        const config = {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${user.token}`,
+          },
+          // onUploadProgress is a sibling to headers, not inside it
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+          },
+        };
         const { data } = await axios.post(`${API_URL}/api/upload`, formData, config);
         imageUrl = data.imageUrl;
       } catch (error) {
-        toast.error('Image upload failed. Post was not created.');
+        toast.error('Media upload failed. Post was not created.');
         setUploading(false);
         return;
       } finally {
@@ -153,6 +165,8 @@ const handleSuggestTitle = async () => {
   };
 
   return (
+     <>
+     {uploading && <UploadProgress progress={uploadProgress} />}
     <div className="bg-cream py-16">
       <div className="max-w-4xl mx-auto px-4">
         <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-2xl shadow-xl">
@@ -221,12 +235,13 @@ const handleSuggestTitle = async () => {
             </div>
 
             <button type="submit" disabled={uploading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300 transform hover:scale-105 shadow-lg disabled:bg-muted">
-              {uploading ? 'Uploading Image...' : 'Submit Request'}
+               {uploading ? `Uploading (${uploadProgress}%)` : 'Submit Request'}
             </button>
           </div>
         </form>
       </div>
     </div>
+    </>
   );
 };
 
