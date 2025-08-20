@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const UserCard = ({ otherUser, friendshipStatus }) => {
   const { user: loggedInUser } = useContext(AuthContext);
@@ -15,7 +16,7 @@ const UserCard = ({ otherUser, friendshipStatus }) => {
     if (!loggedInUser) return toast.error("You must be logged in.");
     try {
       const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-      const { data } = await axios.post(`http://localhost:5000/api/conversations/start/${otherUser._id}`, {}, config);
+ const { data } = await axios.post(`${API_URL}/api/conversations/start/${otherUser._id}`, {}, config);
       navigate('/messages', { state: { conversationId: data._id } });
     } catch (error) {
       toast.error("Could not start chat.");

@@ -23,7 +23,7 @@ const LoginPage = () => {
           <p className="text-muted mt-2">Log in to continue to Sahayata.</p>
         </div>
 
-        <a href="http://localhost:5000/api/auth/google" className="w-full flex items-center justify-center py-3 px-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300 font-semibold text-secondary">
+        <a href={`${API_URL}/api/auth/google`} className="w-full flex items-center justify-center py-3 px-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-300 font-semibold text-secondary">
           <FcGoogle className="mr-3 text-2xl" /> Continue with Google
         </a>
 
