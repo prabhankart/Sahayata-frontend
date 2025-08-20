@@ -4,6 +4,8 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { QuestionMarkCircleIcon, GlobeAltIcon, XMarkIcon, UserGroupIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import FriendRequestDropdown from './FriendRequestDropdown';
+
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // A custom hook to detect clicks outside an element (for closing dropdowns)
 function useClickOutside(ref, callback) {
