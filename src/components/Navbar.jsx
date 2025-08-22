@@ -136,7 +136,9 @@ const Navbar = () => {
                   Create Post
                 </Link>
 
-                <span className="text-muted text-sm font-semibold">Hi, {user.name}</span>
+                <Link to={`/profile/${user._id}`} className="text-muted text-sm font-semibold hover:text-primary">
+    Hi, {user.name}
+</Link>
                 <button onClick={handleLogout} className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-5 rounded-full text-sm shadow-md transform hover:scale-105 transition-all duration-300">
                   Logout
                 </button>

@@ -1,7 +1,8 @@
 import { UsersIcon, SparklesIcon, HandRaisedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
 
 // The card sub-component with a more premium design
-const FeatureCard = ({ icon, title, description }) => {
+const FeatureCard = ({ icon, title, description,linkTo }) => {
   return (
     <div className="bg-surface p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 transform hover:-translate-y-2 flex flex-col">
       <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 text-primary mb-5">
@@ -9,33 +10,37 @@ const FeatureCard = ({ icon, title, description }) => {
       </div>
       <h3 className="text-xl font-bold text-secondary mb-3">{title}</h3>
       <p className="text-muted text-sm leading-relaxed flex-grow">{description}</p>
-      <a href="#" className="mt-6 font-semibold text-primary hover:text-primary-hover inline-flex items-center">
-        Learn More
+ <Link to={linkTo} className="mt-6 font-semibold text-primary ..."> 
+      Learn More
         <ArrowRightIcon className="ml-2 h-4 w-4" />
-      </a>
+     
+  </Link>
     </div>
   );
 };
 
 // The main Features section component
 const Features = () => {
-  const featuresData = [
-    {
-      icon: <UsersIcon className="h-6 w-6" />,
-      title: 'Grow Together',
-      description: 'Tap into the collective wisdom. Share your unique skills and learn new ones from your neighbors. Every shared experience strengthens our community.',
-    },
-    {
-      icon: <SparklesIcon className="h-6 w-6" />,
-      title: 'Connect with Others',
-      description: 'Build meaningful local connections. Find individuals nearby who need assistance or offer your support, forging stronger neighborhood bonds.',
-    },
-    {
-      icon: <HandRaisedIcon className="h-6 w-6" />,
-      title: 'Get Help, Fast',
-      description: 'Need a hand? Post your request and receive timely assistance from verified community members living close by. Swift support is at your fingertips.',
-    },
-  ];
+const featuresData = [
+  {
+    icon: <UsersIcon className="h-8 w-8" />,
+    title: 'Grow Together',
+    description: 'Tap into the collective wisdom...',
+    linkTo: '/grow-together' 
+  },
+  {
+    icon: <SparklesIcon className="h-8 w-8" />,
+    title: 'Connect with Others',
+    description: 'Build meaningful local connections...',
+    linkTo: '/connect-others' // Add this link
+  },
+  {
+    icon: <HandRaisedIcon className="h-8 w-8" />,
+    title: 'Get Help, Fast',
+    description: 'Need a hand? Post your request...',
+    linkTo: '/get-help' // Add this link
+  },
+];
 
   return (
     <div className="bg-cream py-24">

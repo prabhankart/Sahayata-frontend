@@ -4,8 +4,9 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 
 const FriendRequestDropdown = () => {
-  const { user } = useContext(AuthContext);
+ const { user, fetchFriendships } = useContext(AuthContext); 
   const [requests, setRequests] = useState([]);
+  
 
   useEffect(() => {
     if (!user) return;
@@ -23,6 +24,7 @@ const FriendRequestDropdown = () => {
       await axios.put(`http://localhost:5000/api/friends/requests/${requestId}`, { action }, config);
       setRequests(requests.filter(req => req._id !== requestId));
       toast.success(`Request ${action}ed!`);
+      fetchFriendships(user.token); 
     } catch (error) {
       toast.error('Failed to respond to request.');
     }

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 const Footer = () => {
   // Note: We are now using light text colors like text-gray-400 and hover:text-white
   return (
@@ -17,16 +18,16 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-white tracking-wider uppercase">Support</h3>
             <ul className="mt-4 space-y-4">
-              <li><a href="#" className="hover:text-white">Help Center</a></li>
-              <li><a href="#" className="hover:text-white">Contact Us</a></li>
-              <li><a href="#" className="hover:text-white">Guidelines</a></li>
+              <li><Link to="/help" className="hover:text-white">Help Center</Link></li>
+              <li><Link to="/contact" className="hover:text-white">Contact Us</Link></li>
+              <li><Link to="/guidelines" className="hover:text-white">Guidelines</Link></li>
             </ul>
           </div>
           {/* Column 3 */}
           <div>
             <h3 className="text-sm font-semibold text-white tracking-wider uppercase">Company</h3>
             <ul className="mt-4 space-y-4">
-              <li><a href="#" className="hover:text-white">About</a></li>
+              <li><Link to="/about" className="hover:text-white">About</Link></li>
               <li><a href="#" className="hover:text-white">Careers</a></li>
               <li><a href="#" className="hover:text-white">Press</a></li>
             </ul>
@@ -35,8 +36,8 @@ const Footer = () => {
           <div>
             <h3 className="text-sm font-semibold text-white tracking-wider uppercase">Legal</h3>
             <ul className="mt-4 space-y-4">
-              <li><a href="#" className="hover:text-white">Privacy</a></li>
-              <li><a href="#" className="hover:text-white">Terms</a></li>
+             <li><Link to="/privacy" className="hover:text-white">Privacy</Link></li>
+              <li><Link to="/terms" className="hover:text-white">Terms</Link></li>
             </ul>
           </div>
         </div>

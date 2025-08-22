@@ -16,6 +16,8 @@ const EditPostPage = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [currentImage, setCurrentImage] = useState('');
+  const [category, setCategory] = useState('Other'); // New state
+  const [urgency, setUrgency] = useState('Medium');   // New state
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -27,6 +29,8 @@ const EditPostPage = () => {
         const { data } = await axios.get(`${API_URL}/api/posts/${id}`);
         setTitle(data.title);
         setDescription(data.description);
+          setCategory(data.category); // Pre-fill category
+        setUrgency(data.urgency); 
         setCurrentImage(data.image);
         setLoading(false);
       } catch (error) {
@@ -61,7 +65,8 @@ const EditPostPage = () => {
 
     try {
       const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      const postData = { title, description, image: imageUrl };
+   const postData = { title, description, image: imageUrl, category, urgency };
+
       // Use the dynamic API_URL
       await axios.put(`${API_URL}/api/posts/${id}`, postData, config);
       toast.success('Post updated successfully!');
@@ -82,6 +87,29 @@ const EditPostPage = () => {
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Title</label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary" />
+            </div>
+
+             {/* --- NEW: Category and Urgency Fields --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label className="block text-sm font-medium text-secondary mb-1">Category</label>
+                    <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-secondary bg-white">
+                        <option>Home & Repair</option>
+                        <option>Tutoring & Learning</option>
+                        <option>Tech Support</option>
+                        <option>Errands & Shopping</option>
+                        <option>Health & Wellness</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-secondary mb-1">Urgency Level</label>
+                    <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-secondary bg-white">
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                    </select>
+                </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">Description</label>

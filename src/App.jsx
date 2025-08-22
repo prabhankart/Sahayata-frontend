@@ -18,7 +18,17 @@ import Breadcrumbs from './components/Breadcrumbs';
 import EditPostPage from './pages/EditPostPage';
 import ScrollToTop from './components/ScrollToTop'; 
 import GuestRoute from './components/GuestRoute';
-
+import ProfilePage from './pages/ProfilePage';
+import EditProfilePage from './pages/EditProfilePage';
+import GrowTogetherPage from './pages/GrowTogetherPage';
+// ... imports
+import ConnectOthersPage from './pages/ConnectOthersPage';
+import GetHelpPage from './pages/GetHelpPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import GuidelinesPage from './pages/GuidelinesPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 function App() {
   return (
     <Router>
@@ -39,6 +49,16 @@ function App() {
              <Route path="/connect" element={<ConnectPage />} /> 
              <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
              <Route path="/post/:id/edit" element={<ProtectedRoute><EditPostPage /></ProtectedRoute>} />
+             <Route path="/profile/:id" element={<ProfilePage />} />
+<Route path="/profile/edit" element={<ProtectedRoute><EditProfilePage /></ProtectedRoute>} />
+ <Route path="/grow-together" element={<GrowTogetherPage />} />
+  <Route path="/connect-others" element={<ConnectOthersPage />} />
+          <Route path="/get-help" element={<GetHelpPage />} />
+          <Route path="/about" element={<AboutPage />} />
+<Route path="/contact" element={<ContactPage />} />
+<Route path="/guidelines" element={<GuidelinesPage />} />
+<Route path="/privacy" element={<PrivacyPage />} />
+<Route path="/terms" element={<TermsPage />} />
            <Route
             path="/create-post"
             element={

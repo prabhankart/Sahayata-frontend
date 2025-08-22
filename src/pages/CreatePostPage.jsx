@@ -5,7 +5,8 @@ import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { MapPinIcon } from '@heroicons/react/24/solid'; 
-import UploadProgress from '../components/UploadProgress'; 
+import UploadProgress from '../components/UploadProgress';
+import { TagIcon, ClockIcon } from '@heroicons/react/24/outline'; 
 
 // Helper component to programmatically change the map's view
 function ChangeMapView({ coords }) {
@@ -25,8 +26,11 @@ function LocationMarker({ position, setPosition }) {
 }
 
 const CreatePostPage = () => {
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+   const [category, setCategory] = useState('Other'); // Add new state for category
+  const [urgency, setUrgency] = useState('Medium'); 
   const [position, setPosition] = useState(null);
   const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // Default center of India
   const [locationQuery, setLocationQuery] = useState('');
@@ -156,6 +160,8 @@ const handleSuggestTitle = async () => {
       const postData = {
         title,
         description,
+         category, // Add to postData
+        urgency,  // Add to postData
         image: imageUrl,
         location: { coordinates: [position.lng, position.lat] },
       };
@@ -181,7 +187,27 @@ const handleSuggestTitle = async () => {
               <label className="block text-sm font-medium text-secondary mb-1">Title</label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary" />
             </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-secondary">
+                  <option>Home & Repair</option>
+                  <option>Tutoring & Learning</option>
+                  <option>Tech Support</option>
+                  <option>Errands & Shopping</option>
+                  <option>Health & Wellness</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">Urgency Level</label>
+                <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-secondary">
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </select>
+              </div>
+            </div>
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-medium text-secondary">Description</label>
@@ -200,8 +226,6 @@ const handleSuggestTitle = async () => {
 <div>
               <label className="block text-sm font-medium text-secondary mb-2">Location</label>
               
-              {/* --- CORRECTED LOCATION SECTION --- */}
-              {/* This is now a div, not a form. It stacks on mobile. */}
               <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <input 
                   type="text" 
