@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect, useRef } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate ,useLocation} from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { QuestionMarkCircleIcon, GlobeAltIcon, XMarkIcon, UserGroupIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
@@ -47,7 +47,8 @@ const NavItem = ({ to, children, onClick }) => (
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
-
+const location = useLocation();
+const isChatPage = location.pathname.startsWith("/messages/"); 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFriendDropdownOpen, setIsFriendDropdownOpen] = useState(false);
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -85,10 +86,21 @@ const Navbar = () => {
     <header className="bg-surface/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <Link to="/" className="text-primary font-extrabold text-3xl">
-            Sahayata
-          </Link>
+        <div className="flex items-center space-x-2">
+  {isChatPage && (
+   <button
+  onClick={() => navigate("/messages")}
+  className="text-sm px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+>
+  ⬅ Back
+</button>
+
+  )}
+  <Link to="/" className="text-primary font-extrabold text-3xl">
+    Sahayata
+  </Link>
+</div>
+
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8 text-base">
@@ -160,25 +172,42 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden px-4 pt-4 pb-5 space-y-4 bg-surface border-t border-gray-200">
-          <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Community</NavLink>
-          <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Map View</NavLink>
-          <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Connect</NavLink>
-          {user && <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Messages</NavLink>}
-          
-          {/* "CREATE POST" LINK ADDED BACK TO MOBILE MENU HERE */}
-          {user && <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Create Post</NavLink>}
-          
-          <div className="border-t border-gray-200 pt-4 mt-4">
-            {user ? (
-              <button onClick={handleLogout} className="w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-4 rounded-lg">Logout</button>
-            ) : (
-              <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-4 rounded-lg block">Sign In</Link>
-            )}
-          </div>
+     {/* Mobile Menu */}
+{isMenuOpen && (
+  <div className="md:hidden px-4 pt-4 pb-5 space-y-4 bg-surface border-t border-gray-200">
+    <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Community</NavLink>
+    <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Map View</NavLink>
+    <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Connect</NavLink>
+
+    {/* "CREATE POST" LINK */}
+    {user && <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Create Post</NavLink>}
+
+    {user && (
+      <div className="border-t border-gray-200 pt-4 space-y-4">
+        <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-muted hover:text-secondary">Messages</NavLink>
+        <div 
+          onClick={() => { setIsFriendDropdownOpen(!isFriendDropdownOpen); }} 
+          className="flex justify-between items-center font-semibold text-muted hover:text-secondary cursor-pointer"
+        >
+          <span>Friend Requests</span>
+          {pendingRequestCount > 0 && (
+            <span className="h-6 w-6 flex items-center justify-center rounded-full bg-red-500 text-white text-xs">{pendingRequestCount}</span>
+          )}
         </div>
+        {isFriendDropdownOpen && <FriendRequestDropdown />}
+      </div>
+    )}
+
+    <div className="border-t border-gray-200 pt-4 mt-4">
+      {user ? (
+        <button onClick={handleLogout} className="w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-4 rounded-lg">Logout</button>
+      ) : (
+        <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2 px-4 rounded-lg block">Sign In</Link>
       )}
+    </div>
+  </div>
+)}
+
     </header>
   );
 };

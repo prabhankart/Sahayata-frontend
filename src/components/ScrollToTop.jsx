@@ -1,22 +1,15 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-const ScrollToTop = () => {
+function ScrollToTop() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    // This line tells the browser not to handle scroll restoration
-    if (window.history.scrollRestoration) {
-      window.history.scrollRestoration = 'manual';
-    }
-  }, []);
-
-  // This part scrolls to the top on every page navigation
-  useEffect(() => {
+    // Scroll to the top of the page on route change
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [pathname]); // Dependency array ensures this runs only when the path changes
 
-  return null;
+  return null; // This component does not render anything
 }
 
 export default ScrollToTop;
