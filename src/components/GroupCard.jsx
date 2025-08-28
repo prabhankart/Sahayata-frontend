@@ -30,10 +30,10 @@ const GroupCard = ({ group, isMember, onJoin, onLeave, processing }) => {
       <div className="flex flex-col items-end gap-2">
         <Link
           to={`/groups/${group._id}`}
-          className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ${
+          className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset ${
             isMember
-              ? "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-              : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+              ? "bg-indigo-50 text-indigo-700 ring-indigo-200 hover:bg-indigo-100"
+              : "bg-white text-gray-700 ring-gray-200 hover:bg-gray-50"
           }`}
           title={isMember ? "Open group" : "Preview group"}
         >
@@ -65,4 +65,3 @@ const GroupCard = ({ group, isMember, onJoin, onLeave, processing }) => {
 };
 
 export default GroupCard;
-
