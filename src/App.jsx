@@ -28,7 +28,8 @@ import ContactPage from './pages/ContactPage';
 import GuidelinesPage from './pages/GuidelinesPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
-
+import GroupsPage from './pages/GroupsPage';
+import GroupPage from './pages/GroupPage';
 function LayoutWrapper({ children }) {
   const location = useLocation();
   const isMessagesPage = location.pathname.startsWith("/messages");
@@ -75,6 +76,9 @@ function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/create-post" element={<ProtectedRoute><CreatePostPage /></ProtectedRoute>} />
+          <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
+          <Route path="/groups" element={<GroupsPage />} />
+<Route path="/groups/:groupId" element={<GroupPage />} />
         </Routes>
       </LayoutWrapper>
     </Router>

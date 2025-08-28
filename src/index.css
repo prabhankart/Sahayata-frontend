@@ -1,13 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
-/* ... */
 @tailwind components;
 @tailwind utilities;
 
-body {
- @apply bg-cream text-secondary;
+html { scroll-behavior: smooth; }
+body { @apply bg-cream text-secondary antialiased; }
+
+.leaflet-marker-icon { filter: hue-rotate(200deg) brightness(0.9) saturate(1.5); }
+
+@layer components {
+  .card { @apply bg-surface rounded-2xl shadow-card border border-gray-100; }
+  .btn { @apply inline-flex items-center justify-center font-semibold rounded-full px-5 py-2.5 transition-all duration-200; }
+  .btn-primary { @apply btn bg-primary text-white hover:bg-primary-hover shadow-soft hover:shadow-card; }
+  .btn-ghost { @apply btn bg-gray-100 text-secondary hover:bg-gray-200; }
+  .btn-danger { @apply btn bg-red-500 text-white hover:bg-red-600; }
+  .input { @apply w-full p-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary bg-white; }
+  .badge { @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium; }
+  .badge-soft { @apply badge bg-gray-100 text-gray-700; }
 }
-.leaflet-marker-icon {
-  filter: hue-rotate(200deg) brightness(0.9) saturate(1.5);
-}
+
+.prose h1,.prose h2,.prose h3 { @apply text-secondary; }

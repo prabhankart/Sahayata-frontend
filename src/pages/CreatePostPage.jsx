@@ -4,18 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AuthContext } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import { MapPinIcon } from '@heroicons/react/24/solid'; 
+import { MapPinIcon } from '@heroicons/react/24/solid';
 import UploadProgress from '../components/UploadProgress';
-import { TagIcon, ClockIcon } from '@heroicons/react/24/outline'; 
 
-// Helper component to programmatically change the map's view
+// ---------- Map helpers ----------
 function ChangeMapView({ coords }) {
   const map = useMap();
-  map.setView(coords, 13); // Sets the view and zoom level
+  map.setView(coords, 13);
   return null;
 }
 
-// Helper component to handle map clicks
 function LocationMarker({ position, setPosition }) {
   useMapEvents({
     click(e) {
@@ -25,32 +23,38 @@ function LocationMarker({ position, setPosition }) {
   return position === null ? null : <Marker position={position}></Marker>;
 }
 
+// ---------- Create Post ----------
 const CreatePostPage = () => {
-
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-   const [category, setCategory] = useState('Other'); // Add new state for category
-  const [urgency, setUrgency] = useState('Medium'); 
+  const [category, setCategory] = useState('Other');
+  const [urgency, setUrgency] = useState('Medium');
   const [position, setPosition] = useState(null);
-  const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // Default center of India
+  const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // Default India
   const [locationQuery, setLocationQuery] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-   const [uploadProgress, setUploadProgress] = useState(0); 
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
- useEffect(() => {
+
+  // Debug watcher
+  useEffect(() => {
     console.log('Uploading state changed to:', uploading);
   }, [uploading]);
 
+  // ---------- Location search ----------
   const handleLocationSearch = async (e) => {
     e.preventDefault();
     if (!locationQuery) return;
     toast.loading('Searching for location...');
     try {
-      const { data } = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${locationQuery}`);
+      const { data } = await axios.get(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${locationQuery}`
+      );
       toast.dismiss();
       if (data && data.length > 0) {
         const { lat, lon } = data[0];
@@ -61,17 +65,17 @@ const CreatePostPage = () => {
       } else {
         toast.error('Location not found.');
       }
-    } catch (error) {
+    } catch {
       toast.dismiss();
       toast.error('Failed to search for location.');
     }
   };
-  // --- NEW: Function to handle "Use Current Location" ---
+
+  // ---------- Current location ----------
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-        return toast.error('Geolocation is not supported by your browser.');
+      return toast.error('Geolocation not supported.');
     }
-
     toast.loading('Finding your location...');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -83,192 +87,210 @@ const CreatePostPage = () => {
       },
       () => {
         toast.dismiss();
-        toast.error('Unable to retrieve your location. Please grant permission.');
+        toast.error('Location access denied.');
       }
     );
   };
 
-const handleSuggestTitle = async () => {
-    // 1. Check if the description is long enough for the AI
+  // ---------- AI Suggest Title ----------
+  const handleSuggestTitle = async () => {
     if (description.trim().length < 20) {
-      return toast.error('Please write a longer description for the AI to work.');
+      return toast.error('Please write a longer description.');
     }
-
-    // 2. Set loading state to true to show "Generating..." on the button
     setIsGenerating(true);
-    
     try {
-      // 3. Prepare the request with the user's authentication token
-      const config = { 
-        headers: { Authorization: `Bearer ${user.token}` } 
-      };
-
-      // 4. Send the description to the backend AI endpoint
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
       const { data } = await axios.post(`${API_URL}/api/ai/suggest-title`, { description }, config);
-      
-      // 5. Update the title field with the AI's response
       setTitle(data.title);
-      toast.success('AI suggestion complete!');
-
-    } catch (error) {
-      console.error('AI title suggestion failed:', error);
+      toast.success('AI suggested a title!');
+    } catch {
       toast.error('Failed to get AI suggestion.');
     } finally {
-      // 6. Set loading state back to false
       setIsGenerating(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!position) {
-      return toast.error('Please select a location on the map.');
-    }
+  // ---------- Submit ----------
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!user) {
+    toast.error("You must be logged in.");
+    return;
+  }
 
-    let imageUrl = '';
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("description", description);
+  formData.append("category", category);
+  formData.append("urgency", urgency);
 
-    if (imageFile) {
-        console.log('Image file detected:', imageFile);
-      setUploading(true);
-      const formData = new FormData();
-      formData.append('image', imageFile);
-     try {
-        // --- THIS IS THE CORRECTED CONFIGURATION ---
-        const config = {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${user.token}`,
-          },
-          // onUploadProgress is a sibling to headers, not inside it
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
-          },
-        };
-        const { data } = await axios.post(`${API_URL}/api/upload`, formData, config);
-        imageUrl = data.imageUrl;
-      } catch (error) {
-        toast.error('Media upload failed. Post was not created.');
-        setUploading(false);
-        return;
-      } finally {
-        setUploading(false);
-      }
-    }
+  if (imageFile) {
+    formData.append("image", imageFile);
+  }
 
-    try {
-      const postData = {
-        title,
-        description,
-         category, // Add to postData
-        urgency,  // Add to postData
-        image: imageUrl,
-        location: { coordinates: [position.lng, position.lat] },
-      };
-      const config = { headers: { Authorization: `Bearer ${user.token}` } };
-      await axios.post(`${API_URL}/api/posts`, postData, config);
-      toast.success('Help request created successfully!');
-      navigate('/community');
-    } catch (error) {
-      toast.error('Failed to create post. Please try again.');
-    }
-  };
+  if (position) {
+    formData.append("location", JSON.stringify({
+      type: "Point",
+      coordinates: [position.lng, position.lat],
+    }));
+  }
+
+  try {
+    const config = { headers: { Authorization: `Bearer ${user.token}` } };
+    await axios.post(`${API_URL}/api/posts`, formData, config);
+    toast.success("Post created!");
+    navigate("/community");
+  } catch (err) {
+    console.error("Create post error:", err);
+    toast.error("Failed to create post.");
+  }
+};
+
 
   return (
-     <>
-     {uploading && <UploadProgress progress={uploadProgress} />}
-    <div className="bg-cream py-16">
-      <div className="max-w-4xl mx-auto px-4">
-        <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-2xl shadow-xl">
-          <h2 className="text-3xl font-extrabold text-secondary mb-8 text-center">Create a New Help Request</h2>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-secondary mb-1">Title</label>
-              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">Category</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-secondary">
-                  <option>Home & Repair</option>
-                  <option>Tutoring & Learning</option>
-                  <option>Tech Support</option>
-                  <option>Errands & Shopping</option>
-                  <option>Health & Wellness</option>
-                  <option>Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">Urgency Level</label>
-                <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-secondary">
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-medium text-secondary">Description</label>
-                <button type="button" onClick={handleSuggestTitle} disabled={isGenerating} className="bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-semibold py-1 px-3 rounded-full disabled:bg-gray-200">
-                    {isGenerating ? 'Generating...' : '✨ Suggest Title with AI'}
-                </button>
-              </div>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 h-28 resize-none focus:outline-none focus:ring-2 focus:ring-primary text-secondary" />
-            </div>
+    <>
+      {uploading && <UploadProgress progress={uploadProgress} />}
+      <div className="bg-gray-50 py-16">
+        <div className="max-w-4xl mx-auto px-4">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-white p-8 rounded-2xl shadow-xl border border-gray-200"
+          >
+            <h2 className="text-3xl font-extrabold text-secondary mb-8 text-center">
+              Create a New Help Request
+            </h2>
 
-            <div>
-              <label className="block text-sm font-medium text-secondary mb-1">Image (Optional)</label>
-              <input type="file" accept="image/*, video/mp4, video/quicktime" onChange={(e) => setImageFile(e.target.files[0])} className="w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"/>
-            </div>
-
-<div>
-              <label className="block text-sm font-medium text-secondary mb-2">Location</label>
-              
-              <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                <input 
-                  type="text" 
-                  value={locationQuery} 
-                  onChange={(e) => setLocationQuery(e.target.value)} 
-                  placeholder="Type a city or address..." 
-                  className="flex-grow p-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary text-secondary"
+            <div className="space-y-6">
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">Title</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  className="w-full p-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary text-gray-900"
                 />
-                <div className="flex gap-2">
-                  <button 
-                    type="button" // Changed from "submit"
-                    onClick={handleLocationSearch} // Changed from onSubmit
-                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-2 px-6 rounded-lg"
+              </div>
+
+              {/* Category + Urgency */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-1">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full p-3 rounded-lg border border-gray-200 text-gray-900"
                   >
-                    Search
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleUseCurrentLocation}
-                    className="flex-1 bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"
+                    <option>Home & Repair</option>
+                    <option>Tutoring & Learning</option>
+                    <option>Tech Support</option>
+                    <option>Errands & Shopping</option>
+                    <option>Health & Wellness</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-secondary mb-1">Urgency</label>
+                  <select
+                    value={urgency}
+                    onChange={(e) => setUrgency(e.target.value)}
+                    className="w-full p-3 rounded-lg border border-gray-200 text-gray-900"
                   >
-                    <MapPinIcon className="h-5 w-5 mr-2" />
-                    <span className="hidden sm:inline">Current Location</span>
-                  </button>
+                    <option>Low</option>
+                    <option>Medium</option>
+                    <option>High</option>
+                  </select>
                 </div>
               </div>
-              <p className="text-xs text-muted mb-2">Or click on the map to set a pin.</p>
-              <div className="h-80 w-full rounded-lg overflow-hidden border">
-                <MapContainer center={mapCenter} zoom={5} style={{ height: '100%', width: '100%' }}>
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
-                  <LocationMarker position={position} setPosition={setPosition} />
-                  <ChangeMapView coords={mapCenter} />
-                </MapContainer>
-              </div>
-            </div>
 
-            <button type="submit" disabled={uploading} className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300 transform hover:scale-105 shadow-lg disabled:bg-muted">
-               {uploading ? `Uploading (${uploadProgress}%)` : 'Submit Request'}
-            </button>
-          </div>
-        </form>
+              {/* Description + AI button */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-secondary">Description</label>
+                  <button
+                    type="button"
+                    onClick={handleSuggestTitle}
+                    disabled={isGenerating}
+                    className="bg-sky-100 hover:bg-sky-200 text-sky-700 text-xs font-semibold py-1 px-3 rounded-full"
+                  >
+                    {isGenerating ? 'Generating...' : '✨ Suggest Title with AI'}
+                  </button>
+                </div>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  className="w-full p-3 rounded-lg border border-gray-200 h-28 resize-none focus:ring-2 focus:ring-primary text-gray-900"
+                />
+              </div>
+
+              {/* Image */}
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">Image (Optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files[0])}
+                  className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover cursor-pointer"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-2">Location</label>
+                <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                  <input
+                    type="text"
+                    value={locationQuery}
+                    onChange={(e) => setLocationQuery(e.target.value)}
+                    placeholder="Type a city or address..."
+                    className="flex-grow p-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-primary text-gray-900"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleLocationSearch}
+                      className="bg-gray-100 hover:bg-gray-200 text-secondary font-bold py-2 px-6 rounded-lg"
+                    >
+                      Search
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUseCurrentLocation}
+                      className="bg-primary hover:bg-primary-hover text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"
+                    >
+                      <MapPinIcon className="h-5 w-5 mr-2" />
+                      <span className="hidden sm:inline">Current Location</span>
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 mb-2">Or click on the map to set a pin.</p>
+                <div className="h-80 w-full rounded-lg overflow-hidden border">
+                  <MapContainer center={mapCenter} zoom={5} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution="&copy; OpenStreetMap"
+                    />
+                    <LocationMarker position={position} setPosition={setPosition} />
+                    <ChangeMapView coords={mapCenter} />
+                  </MapContainer>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={uploading}
+                className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-lg text-lg transition transform hover:scale-105 shadow-lg"
+              >
+                {uploading ? `Uploading (${uploadProgress}%)` : 'Submit Request'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
     </>
   );
 };
