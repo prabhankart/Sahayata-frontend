@@ -120,11 +120,16 @@ const PrivateChatBox = ({ conversation, onBack }) => {
             😊
           </button>
           <input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          />
+  value={newMessage}
+  onChange={(e) => setNewMessage(e.target.value)}
+  placeholder="Type your message..."
+  className="flex-1 rounded-2xl px-4 py-2 
+             border border-gray-200 
+             bg-gray-50 text-gray-800 
+             placeholder-gray-400 
+             focus:outline-none focus:ring-2 focus:ring-purple-400"
+/>
+
           <button className="ml-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-hover">
             Send
           </button>
