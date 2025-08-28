@@ -203,41 +203,56 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* mobile menu */}
-      {isMenuOpen && (
-        <div className="md:hidden space-y-4 border-t border-gray-200 bg-white px-4 pb-5 pt-4 shadow-md">
-          <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Community</NavLink>
-          <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Map View</NavLink>
-          <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Connect</NavLink>
-          <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Groups</NavLink>
+    {/* mobile menu */}
+{isMenuOpen && (
+  <div className="md:hidden space-y-4 border-t border-gray-200 bg-white px-4 pb-5 pt-4 shadow-md">
+    <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Community</NavLink>
+    <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Map View</NavLink>
+    <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Connect</NavLink>
+    <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Groups</NavLink>
 
-          {user && (
-            <>
-              <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Create Post</NavLink>
-              <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Messages</NavLink>
-            </>
-          )}
+    {user && (
+      <>
+        <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Create Post</NavLink>
+        <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Messages</NavLink>
 
-          <div className="mt-4 border-t border-gray-200 pt-4">
-            {user ? (
-              <button
-                onClick={handleLogout}
-                className="w-full rounded-lg bg-gradient-to-r from-primary to-fuchsia-600 py-2 text-center font-semibold text-white shadow hover:opacity-95"
-              >
-                Logout
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                onClick={() => setIsMenuOpen(false)}
-                className="block w-full rounded-lg bg-gradient-to-r from-primary to-fuchsia-600 py-2 text-center font-semibold text-white shadow hover:opacity-95"
-              >
-                Sign In
-              </Link>
+        {/* 👇 ADD FRIEND REQUEST ICON FOR MOBILE */}
+        <div className="flex items-center justify-between mt-3">
+          <button
+            onClick={() => setIsFriendDropdownOpen((v) => !v)}
+            className="relative rounded-full p-2 hover:bg-gray-100"
+          >
+            <UserGroupIcon className="h-6 w-6 text-gray-500" />
+            {pendingRequestCount > 0 && (
+              <span className="absolute right-1 top-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
             )}
-          </div>
+          </button>
+          {isFriendDropdownOpen && <FriendRequestDropdown />}
         </div>
+      </>
+    )}
+
+    <div className="mt-4 border-t border-gray-200 pt-4">
+      {user ? (
+        <button
+          onClick={handleLogout}
+          className="w-full rounded-lg bg-gradient-to-r from-primary to-fuchsia-600 py-2 text-center font-semibold text-white shadow hover:opacity-95"
+        >
+          Logout
+        </button>
+      ) : (
+        <Link
+          to="/login"
+          onClick={() => setIsMenuOpen(false)}
+          className="block w-full rounded-lg bg-gradient-to-r from-primary to-fuchsia-600 py-2 text-center font-semibold text-white shadow hover:opacity-95"
+        >
+          Sign In
+        </Link>
       )}
+    </div>
+  </div>
+)}
+
     </header>
   );
 }
