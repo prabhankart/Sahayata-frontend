@@ -111,33 +111,50 @@ const CreatePostPage = () => {
   };
 
   // ---------- Submit ----------
- const handleSubmit = async (e) => {
+// ---------- Submit ----------
+const handleSubmit = async (e) => {
   e.preventDefault();
   if (!user) {
     toast.error("You must be logged in.");
     return;
   }
 
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("description", description);
-  formData.append("category", category);
-  formData.append("urgency", urgency);
+  let uploadedUrl = "";
+  try {
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append("image", imageFile);
 
-  if (imageFile) {
-    formData.append("image", imageFile);
+      const uploadRes = await axios.post(`${API_URL}/api/upload`, formData, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+
+      uploadedUrl = uploadRes.data.imageUrl; // ✅ Cloudinary URL
+    }
+  } catch (err) {
+    console.error("Upload error:", err);
+    toast.error("Image upload failed.");
+    return;
   }
 
-  if (position) {
-    formData.append("location", JSON.stringify({
-      type: "Point",
-      coordinates: [position.lng, position.lat],
-    }));
-  }
-
+  // Now send post data with imageUrl
   try {
     const config = { headers: { Authorization: `Bearer ${user.token}` } };
-    await axios.post(`${API_URL}/api/posts`, formData, config);
+    await axios.post(
+      `${API_URL}/api/posts`,
+      {
+        title,
+        description,
+        category,
+        urgency,
+        image: uploadedUrl, // ✅ send Cloudinary URL here
+        location: position
+          ? { type: "Point", coordinates: [position.lng, position.lat] }
+          : null,
+      },
+      config
+    );
+
     toast.success("Post created!");
     navigate("/community");
   } catch (err) {
@@ -145,6 +162,7 @@ const CreatePostPage = () => {
     toast.error("Failed to create post.");
   }
 };
+
 
 
   return (

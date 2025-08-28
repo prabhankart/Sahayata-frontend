@@ -69,14 +69,14 @@ const PostCard = ({ post }) => {
       </div>
 
       <div className="px-5">
-        {currentPost.image && (
-          <Link to={`/post/${currentPost._id}`} className="block mb-4 rounded-xl overflow-hidden relative">
-            <div className="aspect-[16/9] overflow-hidden rounded-xl">
-              <MediaDisplay url={currentPost.image} alt={currentPost.title} />
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          </Link>
-        )}
+       {currentPost.image && currentPost.image.startsWith("http") && (
+  <Link to={`/post/${currentPost._id}`} className="block mb-4 rounded-xl overflow-hidden relative">
+    <div className="aspect-[16/9] overflow-hidden rounded-xl">
+      <MediaDisplay url={currentPost.image} alt={currentPost.title} />
+    </div>
+  </Link>
+)}
+
       </div>
 
       <div className="px-5 flex items-center flex-wrap gap-2 mb-2">
