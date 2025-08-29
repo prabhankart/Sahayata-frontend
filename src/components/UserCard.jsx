@@ -33,6 +33,7 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
       setStatus("request_sent");              // instant feedback
       onRequestSent && onRequestSent();       // keep parent map sticky
       fetchFriendships(loggedInUser.token);   // refresh context (accepted + maybe pending)
+       window.dispatchEvent(new Event('friends:changed'));
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not send request.");
     }
