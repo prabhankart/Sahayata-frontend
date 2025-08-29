@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
@@ -7,37 +7,19 @@ import UserCard from "../components/UserCard";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// --- UPDATED: robust helper for many API shapes ---
 function getOtherUserId(row, meId) {
   if (!row) return null;
-
-  // 1) If /api/friends returns plain USER objects (most likely in your app)
-  //    treat them as accepted friends straight away.
-  if (
-    row._id &&
-    !row.requester &&
-    !row.recipient &&
-    !row.participants &&
-    !row.friend &&
-    row.name // heuristic: looks like a user
-  ) {
+  if (row._id && !row.requester && !row.recipient && !row.participants && !row.friend && row.name) {
     return row._id === meId ? null : row._id;
   }
-
-  // 2) Friendship doc with requester/recipient
   const r = row.requester?._id || row.requester;
   const t = row.recipient?._id || row.recipient;
   if (r && t) return r === meId ? t : r;
-
-  // 3) participants array shape
   if (Array.isArray(row.participants)) {
     const other = row.participants.find((p) => (p?._id || p) !== meId);
     return other?._id || other || null;
   }
-
-  // 4) friend field (some APIs)
   if (row.friend?._id) return row.friend._id;
-
   return null;
 }
 
@@ -55,7 +37,6 @@ export default function ConnectPage() {
 
   const SENT_KEY = `connect:sent:${meId}`;
 
-  // Load users (everyone except me)
   useEffect(() => {
     if (!user) return;
     (async () => {
@@ -71,27 +52,21 @@ export default function ConnectPage() {
     })();
   }, [meId, user, auth]);
 
-  // Build status map from: accepted, incoming, outgoing, local “sent”
   useEffect(() => {
     if (!user) return;
-
     (async () => {
       try {
         const accepted = new Set();
         const incoming = new Set();
         const outgoing = new Set();
 
-        // A) /api/friends  (⚠️ If this returns *users*, mark them accepted)
         for (const f of friendships || []) {
           const other = getOtherUserId(f, meId);
           if (other) {
             const st = (f.status || f.state || "accepted").toLowerCase();
-            // If there's no status (plain user), it's accepted
-            if (!f.status && !f.state) {
-              accepted.add(other);
-            } else if (st === "accepted") {
-              accepted.add(other);
-            } else if (st === "pending") {
+            if (!f.status && !f.state) accepted.add(other);
+            else if (st === "accepted") accepted.add(other);
+            else if (st === "pending") {
               const requester = f.requester?._id || f.requester;
               if (requester === meId) outgoing.add(other);
               else incoming.add(other);
@@ -99,19 +74,16 @@ export default function ConnectPage() {
           }
         }
 
-        // B) incoming pending
         try {
-          const { data } = await axios.get(
-            `${API_URL}/api/friends/requests`,
-            auth
-          );
+          const { data } = await axios.get(`${API_URL}/api/friends/requests`, auth);
           for (const r of data || []) {
             const requesterId = r.requester?._id || r.requester;
             if (requesterId) incoming.add(requesterId);
           }
+          // push count to navbar (so red dot matches immediately)
+          window.dispatchEvent(new CustomEvent('friends:pending-count', { detail: incoming.size }));
         } catch {}
 
-        // C) outgoing pending (if you have it)
         try {
           const { data } = await axios.get(`${API_URL}/api/friends/sent`, auth);
           for (const r of data || []) {
@@ -120,7 +92,6 @@ export default function ConnectPage() {
           }
         } catch {}
 
-        // D) local fallback so “Requested” never disappears after refresh
         try {
           const persisted = JSON.parse(localStorage.getItem(SENT_KEY) || "[]");
           for (const id of persisted) outgoing.add(id);
@@ -143,7 +114,6 @@ export default function ConnectPage() {
     })();
   }, [user, meId, friendships, people, auth]);
 
-  // called by UserCard right after "Add Friend" succeeds
   const markRequested = (otherId) => {
     setStatusById((prev) => ({ ...prev, [otherId]: "request_sent" }));
     try {
@@ -153,7 +123,35 @@ export default function ConnectPage() {
     } catch {}
   };
 
-  // keep friendships fresh (so 'friends' shows up soon after accept)
+  // Instant Accept/Decline (inline on Connect)
+  const acceptRequest = async (otherId) => {
+    try {
+      await axios.post(`${API_URL}/api/friends/accept/${otherId}`, {}, auth);
+      toast.success("Friend request accepted");
+      setStatusById((p) => ({ ...p, [otherId]: "friends" }));
+      fetchFriendships(user.token);
+      window.dispatchEvent(new Event('friends:changed'));
+      // tell navbar to recompute immediately (0/less)
+      window.dispatchEvent(new CustomEvent('friends:pending-count', { detail: 0 }));
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Could not accept request.");
+    }
+  };
+
+  const declineRequest = async (otherId) => {
+    try {
+      await axios.post(`${API_URL}/api/friends/decline/${otherId}`, {}, auth);
+      toast("Request declined", { icon: "👋" });
+      setStatusById((p) => ({ ...p, [otherId]: "not_friends" }));
+      fetchFriendships(user.token);
+      window.dispatchEvent(new Event('friends:changed'));
+      window.dispatchEvent(new CustomEvent('friends:pending-count', { detail: 0 }));
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Could not decline request.");
+    }
+  };
+
+  // periodic refresh so it never gets stale
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(() => fetchFriendships(user.token), 15000);
@@ -180,6 +178,8 @@ export default function ConnectPage() {
                 otherUser={u}
                 friendshipStatus={statusById[u._id] || "not_friends"}
                 onRequestSent={() => markRequested(u._id)}
+                onAccept={() => acceptRequest(u._id)}
+                onDecline={() => declineRequest(u._id)}
               />
             ))}
           </div>

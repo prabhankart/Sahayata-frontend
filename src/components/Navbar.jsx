@@ -13,13 +13,12 @@ import FriendRequestDropdown from './FriendRequestDropdown';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-/** click-outside hook (with matching options on cleanup) */
 function useClickOutside(ref, callback) {
   useEffect(() => {
     const opts = { passive: true };
-    function handle(e) {
+    const handle = (e) => {
       if (ref.current && !ref.current.contains(e.target)) callback?.();
-    }
+    };
     document.addEventListener('pointerdown', handle, opts);
     return () => document.removeEventListener('pointerdown', handle, opts);
   }, [ref, callback]);
@@ -63,50 +62,48 @@ export default function Navbar() {
   useClickOutside(langMenuRef, () => setIsLangMenuOpen(false));
   useClickOutside(friendMenuRef, () => setIsFriendDropdownOpen(false));
 
+  // keep badge accurate (poll + react to events)
   useEffect(() => {
     if (!user) {
       setPendingRequestCount(0);
       return;
     }
 
-    let intervalId;
     const ctrl = new AbortController();
 
     const load = async () => {
       try {
-        const config = {
+        const { data } = await axios.get(`${API_URL}/api/friends/requests`, {
           headers: {
             Authorization: `Bearer ${user.token}`,
             'Cache-Control': 'no-cache',
             Pragma: 'no-cache',
           },
           signal: ctrl.signal,
-        };
-        const { data } = await axios.get(`${API_URL}/api/friends/requests`, config);
+        });
         setPendingRequestCount(Array.isArray(data) ? data.length : 0);
-      } catch {
-        // silent (avoid noisy toasts in nav)
-      }
+      } catch {/* silent */}
     };
 
-    // initial & polling
     load();
-    intervalId = setInterval(load, 15000);
+    const t = setInterval(load, 15000);
 
-    // refresh when tab becomes visible again
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') load();
-    };
+    const onVisible = () => document.visibilityState === 'visible' && load();
     document.addEventListener('visibilitychange', onVisible);
 
-    // app-wide custom event (fire this after accept/decline)
+    // live updates from dropdown / other places
+    const onCount = (e) => setPendingRequestCount(Number(e.detail || 0));
+    window.addEventListener('friends:pending-count', onCount);
+
+    // generic “things changed” event
     const refresh = () => load();
     window.addEventListener('friends:changed', refresh);
 
     return () => {
       ctrl.abort();
-      clearInterval(intervalId);
+      clearInterval(t);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('friends:pending-count', onCount);
       window.removeEventListener('friends:changed', refresh);
     };
   }, [user]);
@@ -121,7 +118,6 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/70 backdrop-blur-xl shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
-          {/* left: logo */}
           <div className="flex items-center space-x-3">
             {isChatPage && (
               <button
@@ -139,7 +135,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* center nav */}
           <nav className="hidden md:flex items-center space-x-10 text-base">
             <NavItem to="/community">Community</NavItem>
             <NavItem to="/map">Map View</NavItem>
@@ -147,26 +142,19 @@ export default function Navbar() {
             <NavItem to="/groups">Groups</NavItem>
           </nav>
 
-          {/* right actions (desktop) */}
           <div className="hidden md:flex items-center space-x-6">
             <Link to="/help" className="rounded-full p-2 hover:bg-gray-100">
               <QuestionMarkCircleIcon className="h-6 w-6 text-gray-500" />
             </Link>
 
             <div className="relative" ref={langMenuRef}>
-              <button
-                onClick={() => setIsLangMenuOpen((v) => !v)}
-                className="rounded-full p-2 hover:bg-gray-100"
-              >
+              <button onClick={() => setIsLangMenuOpen((v) => !v)} className="rounded-full p-2 hover:bg-gray-100">
                 <GlobeAltIcon className="h-6 w-6 text-gray-500" />
               </button>
               {isLangMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white shadow-lg ring-1 ring-black/5 overflow-hidden">
                   {['English (US)', 'हिन्दी', 'Español'].map((lang) => (
-                    <button
-                      key={lang}
-                      className="block w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-purple-50 hover:text-primary"
-                    >
+                    <button key={lang} className="block w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-purple-50 hover:text-primary">
                       {lang}
                     </button>
                   ))}
@@ -194,17 +182,11 @@ export default function Navbar() {
                   {isFriendDropdownOpen && <FriendRequestDropdown />}
                 </div>
 
-                <Link
-                  to="/create-post"
-                  className="text-sm font-semibold text-gray-600 hover:text-primary"
-                >
+                <Link to="/create-post" className="text-sm font-semibold text-gray-600 hover:text-primary">
                   Create Post
                 </Link>
 
-                <Link
-                  to={`/profile/${user._id}`}
-                  className="text-sm font-semibold text-gray-600 hover:text-primary"
-                >
+                <Link to={`/profile/${user._id}`} className="text-sm font-semibold text-gray-600 hover:text-primary">
                   Hi, {user.name}
                 </Link>
 
@@ -225,7 +207,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* mobile button */}
           <div className="md:hidden">
             <button onClick={() => setIsMenuOpen((v) => !v)} className="text-gray-600" aria-label="Toggle menu">
               {isMenuOpen ? <XMarkIcon className="h-7 w-7" /> : <MenuIcon />}
@@ -234,7 +215,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* mobile menu */}
       {isMenuOpen && (
         <div className="md:hidden space-y-4 border-t border-gray-200 bg-white px-4 pb-5 pt-4 shadow-md">
           <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Community</NavLink>
@@ -247,7 +227,6 @@ export default function Navbar() {
               <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Create Post</NavLink>
               <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Messages</NavLink>
 
-              {/* Friend requests (mobile) */}
               <div className="relative mt-2" ref={friendMenuRef}>
                 <button
                   onClick={() => setIsFriendDropdownOpen((v) => !v)}
@@ -291,4 +270,3 @@ export default function Navbar() {
     </header>
   );
 }
-
