@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -7,7 +7,6 @@ import {
   UserPlusIcon,
   ChatBubbleLeftEllipsisIcon,
   ClockIcon,
-  BellAlertIcon,
 } from "@heroicons/react/24/outline";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -19,9 +18,9 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
   const [status, setStatus] = useState(friendshipStatus || "not_friends");
   useEffect(() => setStatus(friendshipStatus || "not_friends"), [friendshipStatus]);
 
-  const handleAddFriend = async () => {
-    if (!loggedInUser) return toast.error("You must be logged in to add friends.");
+  if (!loggedInUser || loggedInUser._id === otherUser._id) return null;
 
+  const handleAddFriend = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
       const { data } = await axios.post(
@@ -30,17 +29,15 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
         config
       );
       toast.success(data.message || "Request sent");
-      setStatus("request_sent");              // instant feedback
-      onRequestSent && onRequestSent();       // keep parent map sticky
-      fetchFriendships(loggedInUser.token);   // refresh context (accepted + maybe pending)
-       window.dispatchEvent(new Event('friends:changed'));
+      setStatus("request_sent");
+      onRequestSent?.();
+      fetchFriendships(loggedInUser.token);
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not send request.");
     }
   };
 
   const handleStartChat = async () => {
-    if (!loggedInUser) return toast.error("You must be logged in.");
     try {
       const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
       const { data } = await axios.post(
@@ -51,6 +48,31 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
       navigate("/messages", { state: { conversationId: data._id } });
     } catch {
       toast.error("Could not start chat.");
+    }
+  };
+
+  const handleAccept = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
+      await axios.post(`${API_URL}/api/friends/requests/${otherUser._id}/accept`, {}, config);
+      toast.success("Friend request accepted");
+      setStatus("friends");
+      fetchFriendships(loggedInUser.token);
+      window.dispatchEvent(new Event("friends:changed"));
+    } catch {
+      toast.error("Failed to accept");
+    }
+  };
+
+  const handleDecline = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
+      await axios.post(`${API_URL}/api/friends/requests/${otherUser._id}/decline`, {}, config);
+      toast("Request declined", { icon: "👌" });
+      setStatus("not_friends");
+      window.dispatchEvent(new Event("friends:changed"));
+    } catch {
+      toast.error("Failed to decline");
     }
   };
 
@@ -78,9 +100,19 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
         );
       case "request_received":
         return (
-          <div className="bg-yellow-100 text-yellow-800 font-semibold py-2 px-4 rounded-full text-xs flex items-center">
-            <BellAlertIcon className="h-4 w-4 mr-1" />
-            Response Required
+          <div className="flex gap-2">
+            <button
+              onClick={handleAccept}
+              className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white"
+            >
+              Accept
+            </button>
+            <button
+              onClick={handleDecline}
+              className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-secondary"
+            >
+              Decline
+            </button>
           </div>
         );
       default:
@@ -95,8 +127,6 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
         );
     }
   };
-
-  if (loggedInUser && loggedInUser._id === otherUser._id) return null;
 
   const joinedText = otherUser.createdAt
     ? `Joined on ${new Date(otherUser.createdAt).toLocaleDateString()}`

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { AuthContext } from "../context/AuthContext";
@@ -26,13 +26,11 @@ function getOtherUserId(row, meId) {
 export default function ConnectPage() {
   const { user, friendships, fetchFriendships } = useContext(AuthContext);
   const meId = user?._id;
-  const auth = useMemo(
-    () => (user ? { headers: { Authorization: `Bearer ${user.token}` } } : {}),
-    [user]
-  );
+  const auth = useMemo(() => (user ? { headers: { Authorization: `Bearer ${user.token}` } } : {}), [user]);
 
   const [people, setPeople] = useState([]);
   const [statusById, setStatusById] = useState({});
+  const [reqIdByUserId, setReqIdByUserId] = useState({});
   const [loading, setLoading] = useState(true);
 
   const SENT_KEY = `connect:sent:${meId}`;
@@ -59,6 +57,7 @@ export default function ConnectPage() {
         const accepted = new Set();
         const incoming = new Set();
         const outgoing = new Set();
+        const map = {};
 
         for (const f of friendships || []) {
           const other = getOtherUserId(f, meId);
@@ -78,10 +77,13 @@ export default function ConnectPage() {
           const { data } = await axios.get(`${API_URL}/api/friends/requests`, auth);
           for (const r of data || []) {
             const requesterId = r.requester?._id || r.requester;
-            if (requesterId) incoming.add(requesterId);
+            const recipientId = r.recipient?._id || r.recipient;
+            if (recipientId === meId && requesterId) {
+              incoming.add(requesterId);
+              map[requesterId] = r._id; // save requestId by other user's id
+            }
           }
-          // push count to navbar (so red dot matches immediately)
-          window.dispatchEvent(new CustomEvent('friends:pending-count', { detail: incoming.size }));
+          window.dispatchEvent(new CustomEvent("friends:pending-count", { detail: incoming.size }));
         } catch {}
 
         try {
@@ -99,15 +101,14 @@ export default function ConnectPage() {
 
         const next = {};
         for (const u of people) {
-          next[u._id] = accepted.has(u._id)
-            ? "friends"
-            : incoming.has(u._id)
-            ? "request_received"
-            : outgoing.has(u._id)
-            ? "request_sent"
-            : "not_friends";
+          next[u._id] =
+            accepted.has(u._id) ? "friends" :
+            incoming.has(u._id) ? "request_received" :
+            outgoing.has(u._id) ? "request_sent" :
+            "not_friends";
         }
         setStatusById(next);
+        setReqIdByUserId(map);
       } catch (e) {
         console.error(e);
       }
@@ -123,35 +124,34 @@ export default function ConnectPage() {
     } catch {}
   };
 
-  // Instant Accept/Decline (inline on Connect)
   const acceptRequest = async (otherId) => {
+    const requestId = reqIdByUserId[otherId];
+    if (!requestId) return toast.error("Request id missing");
     try {
-      await axios.post(`${API_URL}/api/friends/accept/${otherId}`, {}, auth);
+      await axios.put(`${API_URL}/api/friends/requests/${requestId}`, { action: "accept" }, auth);
       toast.success("Friend request accepted");
       setStatusById((p) => ({ ...p, [otherId]: "friends" }));
       fetchFriendships(user.token);
-      window.dispatchEvent(new Event('friends:changed'));
-      // tell navbar to recompute immediately (0/less)
-      window.dispatchEvent(new CustomEvent('friends:pending-count', { detail: 0 }));
+      window.dispatchEvent(new Event("friends:changed"));
     } catch (e) {
       toast.error(e.response?.data?.message || "Could not accept request.");
     }
   };
 
   const declineRequest = async (otherId) => {
+    const requestId = reqIdByUserId[otherId];
+    if (!requestId) return toast.error("Request id missing");
     try {
-      await axios.post(`${API_URL}/api/friends/decline/${otherId}`, {}, auth);
+      await axios.put(`${API_URL}/api/friends/requests/${requestId}`, { action: "decline" }, auth);
       toast("Request declined", { icon: "👋" });
       setStatusById((p) => ({ ...p, [otherId]: "not_friends" }));
       fetchFriendships(user.token);
-      window.dispatchEvent(new Event('friends:changed'));
-      window.dispatchEvent(new CustomEvent('friends:pending-count', { detail: 0 }));
+      window.dispatchEvent(new Event("friends:changed"));
     } catch (e) {
       toast.error(e.response?.data?.message || "Could not decline request.");
     }
   };
 
-  // periodic refresh so it never gets stale
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(() => fetchFriendships(user.token), 15000);
@@ -162,9 +162,7 @@ export default function ConnectPage() {
     <div className="bg-cream py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-10 text-center">
-          <h1 className="text-4xl font-extrabold text-secondary">
-            Connect with the Community
-          </h1>
+          <h1 className="text-4xl font-extrabold text-secondary">Connect with the Community</h1>
           <p className="text-muted mt-3">Find and connect with other members.</p>
         </div>
 

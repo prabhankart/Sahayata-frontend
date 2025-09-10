@@ -1,26 +1,26 @@
-import { useContext, useState, useEffect, useRef } from 'react';
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
+import { useContext, useState, useEffect, useRef } from "react";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import axios from "axios";
+import { AuthContext } from "../context/AuthContext";
 import {
   QuestionMarkCircleIcon,
   GlobeAltIcon,
   XMarkIcon,
   UserGroupIcon,
   EnvelopeIcon,
-} from '@heroicons/react/24/outline';
-import FriendRequestDropdown from './FriendRequestDropdown';
+} from "@heroicons/react/24/outline";
+import FriendRequestDropdown from "./FriendRequestDropdown";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// click-outside helper
 function useClickOutside(ref, callback) {
   useEffect(() => {
-    const opts = { passive: true };
     const handle = (e) => {
       if (ref.current && !ref.current.contains(e.target)) callback?.();
     };
-    document.addEventListener('pointerdown', handle, opts);
-    return () => document.removeEventListener('pointerdown', handle, opts);
+    document.addEventListener("pointerdown", handle, { passive: true });
+    return () => document.removeEventListener("pointerdown", handle);
   }, [ref, callback]);
 }
 
@@ -30,16 +30,19 @@ const MenuIcon = () => (
   </svg>
 );
 
+// lighter pill links
 const NavItem = ({ to, children, onClick }) => (
   <NavLink
     to={to}
     onClick={onClick}
     className={({ isActive }) =>
-      `relative font-semibold transition-all duration-300 ${
+      [
+        "relative rounded-lg px-3 py-2 font-semibold tracking-wide transition-all duration-200",
+        "hover:bg-gray-50 hover:text-violet-700",
         isActive
-          ? 'text-primary after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-full after:bg-gradient-to-r after:from-primary after:to-fuchsia-500 after:rounded-full'
-          : 'text-gray-500 hover:text-primary'
-      }`
+          ? "text-violet-700 bg-violet-50 border border-violet-100"
+          : "text-gray-700",
+      ].join(" ")
     }
   >
     {children}
@@ -50,7 +53,7 @@ export default function Navbar() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const isChatPage = location.pathname.startsWith('/messages');
+  const isChatPage = location.pathname.startsWith("/messages");
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFriendDropdownOpen, setIsFriendDropdownOpen] = useState(false);
@@ -62,99 +65,91 @@ export default function Navbar() {
   useClickOutside(langMenuRef, () => setIsLangMenuOpen(false));
   useClickOutside(friendMenuRef, () => setIsFriendDropdownOpen(false));
 
-  // keep badge accurate (poll + react to events)
+  // keep friend badge fresh
   useEffect(() => {
     if (!user) {
       setPendingRequestCount(0);
       return;
     }
-
     const ctrl = new AbortController();
-
     const load = async () => {
       try {
         const { data } = await axios.get(`${API_URL}/api/friends/requests`, {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-            'Cache-Control': 'no-cache',
-            Pragma: 'no-cache',
-          },
+          headers: { Authorization: `Bearer ${user.token}` },
           signal: ctrl.signal,
         });
         setPendingRequestCount(Array.isArray(data) ? data.length : 0);
-      } catch {/* silent */}
+      } catch {}
     };
-
     load();
     const t = setInterval(load, 15000);
-
-    const onVisible = () => document.visibilityState === 'visible' && load();
-    document.addEventListener('visibilitychange', onVisible);
-
-    // live updates from dropdown / other places
-    const onCount = (e) => setPendingRequestCount(Number(e.detail || 0));
-    window.addEventListener('friends:pending-count', onCount);
-
-    // generic “things changed” event
-    const refresh = () => load();
-    window.addEventListener('friends:changed', refresh);
-
     return () => {
       ctrl.abort();
       clearInterval(t);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('friends:pending-count', onCount);
-      window.removeEventListener('friends:changed', refresh);
     };
   }, [user]);
 
   const handleLogout = () => {
     logout();
     setIsMenuOpen(false);
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/70 backdrop-blur-xl shadow-sm">
+    <header className="sticky top-0 z-50">
+      {/* ultra-light frosted bar */}
+      <div className="absolute inset-0 -z-10 bg-white/95 supports-[backdrop-filter]:bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-[0_4px_16px_-12px_rgba(0,0,0,0.08)]"></div>
+
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between">
-          <div className="flex items-center space-x-3">
+          {/* Left: Back + Logo */}
+          <div className="flex items-center gap-3">
             {isChatPage && (
               <button
-                onClick={() => navigate('/messages')}
-                className="rounded-lg bg-gray-100/80 px-3 py-2 text-sm hover:bg-gray-200"
+                onClick={() => navigate("/messages")}
+                className="rounded-md bg-white px-3 py-2 text-sm text-gray-700 border border-gray-200 hover:bg-gray-50"
               >
                 ⬅ Back
               </button>
             )}
             <Link
               to="/"
-              className="text-3xl font-extrabold bg-gradient-to-r from-purple-600 to-fuchsia-500 bg-clip-text text-transparent"
+              className="text-3xl font-extrabold bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent"
             >
               Sahayata
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-10 text-base">
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center space-x-1 text-base">
             <NavItem to="/community">Community</NavItem>
             <NavItem to="/map">Map View</NavItem>
             <NavItem to="/connect">Connect</NavItem>
             <NavItem to="/groups">Groups</NavItem>
           </nav>
 
-          <div className="hidden md:flex items-center space-x-6">
-            <Link to="/help" className="rounded-full p-2 hover:bg-gray-100">
+          {/* Right actions */}
+          <div className="hidden md:flex items-center gap-2">
+            <Link to="/help" className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition" aria-label="Help">
               <QuestionMarkCircleIcon className="h-6 w-6 text-gray-500" />
             </Link>
 
+            {/* Language */}
             <div className="relative" ref={langMenuRef}>
-              <button onClick={() => setIsLangMenuOpen((v) => !v)} className="rounded-full p-2 hover:bg-gray-100">
+              <button
+                onClick={() => setIsLangMenuOpen((v) => !v)}
+                className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
+                aria-label="Language"
+              >
                 <GlobeAltIcon className="h-6 w-6 text-gray-500" />
               </button>
               {isLangMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white shadow-lg ring-1 ring-black/5 overflow-hidden">
-                  {['English (US)', 'हिन्दी', 'Español'].map((lang) => (
-                    <button key={lang} className="block w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-purple-50 hover:text-primary">
+                <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100">
+                  {["English (US)", "हिन्दी", "Español"].map((lang) => (
+                    <button
+                      key={lang}
+                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    >
                       {lang}
                     </button>
                   ))}
@@ -164,35 +159,51 @@ export default function Navbar() {
 
             {user ? (
               <>
-                <Link to="/messages" className="rounded-full p-2 hover:bg-gray-100 relative">
+                <Link
+                  to="/messages"
+                  className="relative rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
+                  aria-label="Messages"
+                >
                   <EnvelopeIcon className="h-6 w-6 text-gray-500" />
                 </Link>
 
+                {/* Friend requests */}
                 <div className="relative" ref={friendMenuRef}>
                   <button
                     onClick={() => setIsFriendDropdownOpen((v) => !v)}
-                    className="relative rounded-full p-2 hover:bg-gray-100"
+                    className="relative rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
                     aria-label="Friend requests"
                   >
                     <UserGroupIcon className="h-6 w-6 text-gray-500" />
                     {pendingRequestCount > 0 && (
-                      <span className="absolute right-1 top-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                      <span className="absolute right-1 top-1 block h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
                     )}
                   </button>
-                  {isFriendDropdownOpen && <FriendRequestDropdown />}
+                  {isFriendDropdownOpen && (
+                    <FriendRequestDropdown
+                      token={user.token}
+                      onHandled={() => window.dispatchEvent(new Event("friends:changed"))}
+                    />
+                  )}
                 </div>
 
-                <Link to="/create-post" className="text-sm font-semibold text-gray-600 hover:text-primary">
+                <Link
+                  to="/create-post"
+                  className="rounded-md px-3 py-2 text-sm font-semibold text-gray-700 hover:text-violet-700 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
+                >
                   Create Post
                 </Link>
 
-                <Link to={`/profile/${user._id}`} className="text-sm font-semibold text-gray-600 hover:text-primary">
+                <Link
+                  to={`/profile/${user._id}`}
+                  className="rounded-md px-3 py-2 text-sm font-semibold text-gray-700 hover:text-violet-700 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
+                >
                   Hi, {user.name}
                 </Link>
 
                 <button
                   onClick={handleLogout}
-                  className="rounded-full bg-gradient-to-r from-primary to-fuchsia-600 px-5 py-2 text-sm font-bold text-white shadow-md transition-transform hover:scale-105"
+                  className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:shadow transition"
                 >
                   Logout
                 </button>
@@ -200,67 +211,70 @@ export default function Navbar() {
             ) : (
               <Link
                 to="/login"
-                className="rounded-full bg-gradient-to-r from-primary to-fuchsia-600 px-5 py-2 text-sm font-bold text-white shadow-md hover:scale-105 transition"
+                className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:shadow transition"
               >
                 Sign In
               </Link>
             )}
           </div>
 
+          {/* Mobile toggle */}
           <div className="md:hidden">
-            <button onClick={() => setIsMenuOpen((v) => !v)} className="text-gray-600" aria-label="Toggle menu">
+            <button
+              onClick={() => setIsMenuOpen((v) => !v)}
+              className="rounded-md p-2 text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
+              aria-label="Open menu"
+            >
               {isMenuOpen ? <XMarkIcon className="h-7 w-7" /> : <MenuIcon />}
             </button>
           </div>
         </div>
       </div>
 
+      {/* Mobile drawer */}
       {isMenuOpen && (
-        <div className="md:hidden space-y-4 border-t border-gray-200 bg-white px-4 pb-5 pt-4 shadow-md">
-          <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Community</NavLink>
-          <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Map View</NavLink>
-          <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Connect</NavLink>
-          <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Groups</NavLink>
+        <div className="md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-sm px-4 pb-5 pt-4 shadow-sm">
+          <div className="space-y-2">
+            <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Community</NavLink>
+            <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Map View</NavLink>
+            <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Connect</NavLink>
+            <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Groups</NavLink>
 
-          {user && (
-            <>
-              <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Create Post</NavLink>
-              <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block font-semibold text-gray-600 hover:text-primary">Messages</NavLink>
+            {user && (
+              <>
+                <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Create Post</NavLink>
+                <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Messages</NavLink>
 
-              <div className="relative mt-2" ref={friendMenuRef}>
-                <button
-                  onClick={() => setIsFriendDropdownOpen((v) => !v)}
-                  className="relative rounded-full p-2 hover:bg-gray-100"
-                  aria-label="Friend requests"
-                >
-                  <UserGroupIcon className="h-6 w-6 text-gray-500" />
-                  {pendingRequestCount > 0 && (
-                    <span className="absolute right-1 top-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                <div className="relative">
+                  <button
+                    onClick={() => setIsFriendDropdownOpen((v) => !v)}
+                    className="relative rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    Friend Requests
+                    {pendingRequestCount > 0 && (
+                      <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-rose-500 align-middle"></span>
+                    )}
+                  </button>
+                  {isFriendDropdownOpen && (
+                    <div className="mt-2 w-full max-h-[60vh] overflow-auto rounded-xl bg-white shadow border border-gray-100">
+                      <FriendRequestDropdown
+                        token={user.token}
+                        onHandled={() => window.dispatchEvent(new Event("friends:changed"))}
+                      />
+                    </div>
                   )}
-                </button>
-                {isFriendDropdownOpen && (
-                  <div className="absolute left-0 mt-2 w-[min(92vw,22rem)] max-h-[60vh] overflow-auto rounded-xl bg-white shadow-lg ring-1 ring-black/5 z-50">
-                    <FriendRequestDropdown />
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+                </div>
+              </>
+            )}
+          </div>
 
-          <div className="mt-4 border-t border-gray-200 pt-4">
+          <div className="mt-4 border-t border-gray-100 pt-4">
             {user ? (
-              <button
-                onClick={handleLogout}
-                className="w-full rounded-lg bg-gradient-to-r from-primary to-fuchsia-600 py-2 text-center font-semibold text-white shadow hover:opacity-95"
-              >
+              <button onClick={handleLogout} className="w-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 py-2 text-center font-semibold text-white shadow-sm hover:shadow transition">
                 Logout
               </button>
             ) : (
-              <Link
-                to="/login"
-                onClick={() => setIsMenuOpen(false)}
-                className="block w-full rounded-lg bg-gradient-to-r from-primary to-fuchsia-600 py-2 text-center font-semibold text-white shadow hover:opacity-95"
-              >
+              <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block w-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 py-2 text-center font-semibold text-white shadow-sm hover:shadow transition">
                 Sign In
               </Link>
             )}
