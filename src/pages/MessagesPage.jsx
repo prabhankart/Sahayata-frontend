@@ -47,21 +47,20 @@ const MessagesPage = () => {
 
   return (
     <div className="flex h-screen bg-cream overflow-hidden">
-      {/* --- Left Column: Conversation List --- */}
+      {/* Left column */}
       <div
         className={`w-full md:w-1/3 border-r border-gray-200 bg-surface flex flex-col ${
           selectedConversation ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Header with Back to Home */}
         <div className="p-4 border-b border-gray-200 flex items-center">
-         <button
-        onClick={() => navigate("/")}
-        className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition shadow-sm"
-      >
-        <ArrowLeftIcon  className="w-5 h-5 text-gray-700" />
-      </button>
-          <h2 className="text-xl font-bold text-secondary">Chats</h2>
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition shadow-sm"
+          >
+            <ArrowLeftIcon className="w-5 h-5 text-gray-700" />
+          </button>
+          <h2 className="text-xl font-bold text-secondary ml-3">Chats</h2>
         </div>
 
         {conversations.length > 0 ? (
@@ -96,7 +95,7 @@ const MessagesPage = () => {
         )}
       </div>
 
-      {/* --- Right Column: Chat Window --- */}
+      {/* Right column */}
       <div
         className={`w-full md:w-2/3 flex flex-col ${
           selectedConversation ? 'flex' : 'hidden md:flex'
