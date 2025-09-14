@@ -229,7 +229,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
           m._id === msg._id ? { ...m, reactions: data.reactions || [] } : m
         )
       );
-      // broadcast to others is done server-side; we still emit just in case
       socket.emit("reactMessage", {
         messageId: msg._id,
         emoji,
@@ -311,7 +310,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     };
 
   return (
-    <div className="flex flex-col h-[100dvh] relative">
+    <div className="flex flex-col h-[100dvh] relative overscroll-contain">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-surface flex items-center">
         <button
@@ -326,7 +325,10 @@ const PrivateChatBox = ({ conversation, onBack }) => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-50 pb-28">
+      <div
+        className="flex-1 overflow-y-auto p-4 bg-gray-50 pb-28 overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {messages.map((msg) => {
           const mine = (msg.sender?._id || msg.sender) === user._id;
           const isDeleted = msg.deletedForEveryone;
@@ -386,12 +388,12 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                         onClick={() => setPreview(a)}
                       >
                         {a.type === "image" && (
-                          <img src={a.url} alt={a.name} className="max-h-48 rounded" />
+                          <img src={a.url} alt={a.name} className="max-h-48 w-full h-auto rounded" />
                         )}
                         {a.type === "video" && (
-                          <video src={a.url} controls className="max-h-64 rounded" />
+                          <video src={a.url} controls className="max-h-64 w-full rounded" />
                         )}
-                        {a.type === "audio" && <audio src={a.url} controls />}
+                        {a.type === "audio" && <audio src={a.url} controls className="w-full" />}
                         {a.type === "file" && (
                           <a
                             href={a.url}
@@ -523,7 +525,10 @@ const PrivateChatBox = ({ conversation, onBack }) => {
       )}
 
       {/* Composer */}
-      <div className="sticky bottom-0 p-3 bg-white border-t dark:bg-gray-900">
+      <div
+        className="sticky bottom-0 p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
+      >
         {/* Editing banner */}
         {editingId && (
           <div className="mb-2 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -553,7 +558,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
             😊
           </button>
 
-          {/* File input */}
+        {/* File input */}
           <input
             ref={fileRef}
             type="file"
@@ -568,7 +573,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
             <PaperClipIcon className="h-6 w-6" />
           </button>
 
-          {/* Text input (visible colors) */}
+          {/* Text input */}
           <input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}

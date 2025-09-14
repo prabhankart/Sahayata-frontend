@@ -37,7 +37,7 @@ const MessagesPage = () => {
     };
 
     fetchConversations();
-  }, [user.token, location.state]);
+  }, [user?.token, location.state]);
 
   const getOtherParticipant = (convo) => {
     return convo.participants.find(p => p._id !== user._id);
@@ -46,10 +46,10 @@ const MessagesPage = () => {
   if (loading) return <Spinner />;
 
   return (
-    <div className="flex h-screen bg-cream overflow-hidden">
+    <div className="flex min-h-[100dvh] bg-cream overflow-hidden overscroll-contain">
       {/* Left column */}
       <div
-        className={`w-full md:w-1/3 border-r border-gray-200 bg-surface flex flex-col ${
+        className={`w-full md:w-1/3 h-full border-r border-gray-200 bg-surface flex flex-col ${
           selectedConversation ? 'hidden md:flex' : 'flex'
         }`}
       >
@@ -64,7 +64,7 @@ const MessagesPage = () => {
         </div>
 
         {conversations.length > 0 ? (
-          <ul className="flex-1 overflow-y-auto">
+          <ul className="flex-1 overflow-y-auto overscroll-contain">
             {conversations.map((convo) => (
               <li
                 key={convo._id}
@@ -97,7 +97,7 @@ const MessagesPage = () => {
 
       {/* Right column */}
       <div
-        className={`w-full md:w-2/3 flex flex-col ${
+        className={`w-full md:w-2/3 h-full flex flex-col ${
           selectedConversation ? 'flex' : 'hidden md:flex'
         }`}
       >
