@@ -50,6 +50,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
   const endRef = useRef(null);
   const fileRef = useRef(null);
+  const inputRef = useRef(null);
   const longPressTimer = useRef(null);
   const menuRef = useRef(null);
 
@@ -60,6 +61,14 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   useEffect(() => {
     const id = setInterval(() => forceTick((x) => x + 1), 60 * 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Also nudge to bottom when the mobile keyboard changes viewport height
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    const onVV = () => requestAnimationFrame(toBottom);
+    window.visualViewport.addEventListener("resize", onVV);
+    return () => window.visualViewport.removeEventListener("resize", onVV);
   }, []);
 
   // ----- Load messages + realtime receive
@@ -259,6 +268,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     setNewMessage(msg.text || "");
     setContextMenu(null);
     toBottom();
+    setTimeout(() => inputRef.current?.focus(), 10);
   };
 
   const cancelEdit = () => {
@@ -353,7 +363,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
   return (
-    <div className="flex flex-col h-[100dvh] relative overscroll-contain">
+    <div className="flex flex-col h-[var(--app-dvh,100dvh)] relative overscroll-contain">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-surface flex items-center">
         <button
@@ -369,10 +379,11 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
       {/* Messages */}
       <div
-        className="flex-1 overflow-y-auto p-4 bg-gray-50 overscroll-contain"
+        className="flex-1 min-h-0 overflow-y-auto p-4 bg-gray-50 overscroll-contain"
         style={{
           WebkitOverflowScrolling: "touch",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 110px)",
+          scrollPaddingBottom: "120px",
         }}
       >
         {messages.map((msg) => {
@@ -573,9 +584,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         </>
       )}
 
-      {/* Composer */}
+      {/* Composer (sticky, not fixed) */}
       <div
-        className="fixed md:sticky left-0 right-0 bottom-0 md:left-auto md:right-auto md:bottom-auto p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20"
+        className="sticky bottom-0 p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20 shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.15)]"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
       >
         {editingId && (
@@ -604,8 +615,10 @@ const PrivateChatBox = ({ conversation, onBack }) => {
           </button>
 
           <input
+            ref={inputRef}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
+            onFocus={() => setTimeout(toBottom, 0)}
             placeholder={editingId ? "Edit your message…" : "Type a message…"}
             className="
               flex-1 rounded-2xl border px-3 py-2
