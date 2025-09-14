@@ -62,9 +62,12 @@ export default function Navbar() {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
-  const langMenuRef = useRef(null);
+  const langMenuRef = useRef(null);            // desktop dropdown anchor
+  const langMenuRefMobile = useRef(null);      // mobile dropdown anchor
   const friendMenuRef = useRef(null);
+
   useClickOutside(langMenuRef, () => setIsLangMenuOpen(false));
+  useClickOutside(langMenuRefMobile, () => setIsLangMenuOpen(false));
   useClickOutside(friendMenuRef, () => setIsFriendDropdownOpen(false));
 
   const languageCodes = ["en","hi","es","mr","gu","bn","ta","te","kn","pa","ur"];
@@ -141,13 +144,13 @@ export default function Navbar() {
             <NavItem to="/groups">{t("nav.groups")}</NavItem>
           </nav>
 
-          {/* Right actions */}
+          {/* Right actions (desktop) */}
           <div className="hidden md:flex items-center gap-2">
             <Link to="/help" className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition" aria-label={t("actions.help")}>
               <QuestionMarkCircleIcon className="h-6 w-6 text-gray-500" />
             </Link>
 
-            {/* Language */}
+            {/* Language (desktop) */}
             <div className="relative" ref={langMenuRef}>
               <button
                 onClick={() => setIsLangMenuOpen((v) => !v)}
@@ -158,7 +161,7 @@ export default function Navbar() {
                 <GlobeAltIcon className="h-6 w-6 text-gray-500" />
               </button>
               {isLangMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100">
+                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100 z-50">
                   {languages.map((l) => (
                     <button
                       key={l.code}
@@ -234,8 +237,35 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile toggle */}
-          <div className="md:hidden">
+          {/* Mobile header actions: Language + Menu */}
+          <div className="md:hidden flex items-center gap-1">
+            {/* Language (mobile header) */}
+            <div className="relative" ref={langMenuRefMobile}>
+              <button
+                onClick={() => setIsLangMenuOpen((v) => !v)}
+                className="rounded-md p-2 text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
+                aria-label="Language"
+                title="Language"
+              >
+                <GlobeAltIcon className="h-6 w-6 text-gray-500" />
+              </button>
+              {isLangMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 max-w-[90vw] max-h-[60vh] overflow-auto rounded-xl bg-white shadow-md border border-gray-100 z-50">
+                  {languages.map((l) => (
+                    <button
+                      key={l.code}
+                      onClick={() => changeLang(l.code)}
+                      className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <span>{l.label}</span>
+                      {i18n.language === l.code && <span>✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Mobile toggle */}
             <button
               onClick={() => setIsMenuOpen((v) => !v)}
               className="rounded-md p-2 text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"

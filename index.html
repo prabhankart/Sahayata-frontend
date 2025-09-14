@@ -3,8 +3,42 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Mobile-safe viewport (prevents iOS/Android URL bar jump) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
     <title>Vite + React</title>
+
+    <style>
+      /* Default to CSS dvh; will be overwritten by script below on real devices */
+      :root { --app-dvh: 100dvh; }
+      html, body, #root { height: 100%; }
+      body {
+        margin: 0;
+        background: #ffffff;               /* matches theme-color */
+        overscroll-behavior: contain;      /* stop rubber-band/parent scroll */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      /* Make the app use the real visual viewport height by default */
+      #root { min-height: var(--app-dvh); }
+      /* Safe area for notches if you ever position fixed elements */
+      .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom, 0px)); }
+    </style>
+
+    <script>
+      // Keep --app-dvh in sync with the real viewport height (URL bar/keyboard aware)
+      (function () {
+        const setDvh = () => {
+          const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+          document.documentElement.style.setProperty('--app-dvh', h + 'px');
+        };
+        setDvh();
+        window.addEventListener('resize', setDvh);
+        window.addEventListener('orientationchange', setDvh);
+        if (window.visualViewport) window.visualViewport.addEventListener('resize', setDvh);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

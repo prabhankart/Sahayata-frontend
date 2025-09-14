@@ -330,8 +330,18 @@ export default function ChatBox({ postId }) {
   // Tighter/safer default heights on small screens
   const containerHeight = "h-[50vh] md:h-[65vh] lg:h-[70vh]";
 
+  // ⬇️ Close preview via Esc key
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setPreview(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
+
   return (
-    <div className={`flex w-full min-w-0 flex-col ${containerHeight} max-h-[78vh]`}>
+    <div className={`flex w-full min-w-0 flex-col ${containerHeight} max-h=[78vh]`}>
       {/* Top bar */}
       <div className="mb-2 flex items-center justify-between">
         <h4 className="font-semibold text-gray-700">
@@ -476,7 +486,7 @@ export default function ChatBox({ postId }) {
       </div>
 
       {/* Composer */}
-      <form onSubmit={handleSendMessage} className="mt-auto flex w-full min-w-0 items-center gap-2">
+      <form onSubmit={handleSendMessage} className="mt-auto flex w/full min-w-0 items-center gap-2">
         <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
         <button
           type="button"
@@ -534,19 +544,37 @@ export default function ChatBox({ postId }) {
         </div>
       )}
 
-      {/* Fullscreen Preview */}
+      {/* Fullscreen Preview with Close (X) */}
       {preview && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000]"
           onClick={() => setPreview(null)}
         >
-          {preview.type === "image" && <img src={preview.url} className="max-h-[90vh] max-w-[90vw] rounded" />}
-          {preview.type === "video" && (
-            <video src={preview.url} controls autoPlay className="max-h-[90vh] max-w-[90vw] rounded" />
-          )}
-          {preview.type === "audio" && (
-            <audio src={preview.url} controls autoPlay className="w-full max-w-[80vw]" />
-          )}
+          {/* Close button */}
+          <button
+            type="button"
+            aria-label="Close preview"
+            title="Close"
+            onClick={(e) => { e.stopPropagation(); setPreview(null); }}
+            className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur"
+          >
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" d="M6 6l12 12M6 18L18 6" />
+            </svg>
+          </button>
+
+          {/* Media container (stop propagation so clicks on media don't close) */}
+          <div className="max-h-[90vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+            {preview.type === "image" && (
+              <img src={preview.url} className="max-h-[90vh] max-w-[90vw] rounded shadow-lg" />
+            )}
+            {preview.type === "video" && (
+              <video src={preview.url} controls autoPlay className="max-h-[90vh] max-w-[90vw] rounded shadow-lg" />
+            )}
+            {preview.type === "audio" && (
+              <audio src={preview.url} controls autoPlay className="w-full max-w-[80vw]" />
+            )}
+          </div>
         </div>
       )}
     </div>
