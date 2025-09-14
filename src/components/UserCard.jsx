@@ -11,7 +11,13 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
+const UserCard = ({
+  otherUser,
+  friendshipStatus,
+  onRequestSent,   // parent updates local cache & pending count
+  onAccept,        // parent calls PUT /api/friends/requests/:id {action:'accept'}
+  onDecline,       // parent calls PUT /api/friends/requests/:id {action:'decline'}
+}) => {
   const { user: loggedInUser, fetchFriendships } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -20,6 +26,7 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
 
   if (!loggedInUser || loggedInUser._id === otherUser._id) return null;
 
+  // Send friend request (this endpoint exists in your backend)
   const handleAddFriend = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
@@ -28,15 +35,16 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
         {},
         config
       );
-      toast.success(data.message || "Request sent");
-      setStatus("request_sent");
-      onRequestSent?.();
+      toast.success(data?.message || "Request sent");
+      setStatus("request_sent");       // optimistic UI
+      onRequestSent?.();               // let parent update caches/localStorage
       fetchFriendships(loggedInUser.token);
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not send request.");
     }
   };
 
+  // Start a 1:1 conversation
   const handleStartChat = async () => {
     try {
       const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
@@ -51,28 +59,22 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
     }
   };
 
+  // Accept / Decline are delegated to the parent so the correct requestId is used.
   const handleAccept = async () => {
     try {
-      const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-      await axios.post(`${API_URL}/api/friends/requests/${otherUser._id}/accept`, {}, config);
-      toast.success("Friend request accepted");
-      setStatus("friends");
-      fetchFriendships(loggedInUser.token);
-      window.dispatchEvent(new Event("friends:changed"));
+      await onAccept?.();
+      setStatus("friends");            // optimistic; parent will re-sync status
     } catch {
-      toast.error("Failed to accept");
+      // parent already toasts on error
     }
   };
 
   const handleDecline = async () => {
     try {
-      const config = { headers: { Authorization: `Bearer ${loggedInUser.token}` } };
-      await axios.post(`${API_URL}/api/friends/requests/${otherUser._id}/decline`, {}, config);
-      toast("Request declined", { icon: "👌" });
-      setStatus("not_friends");
-      window.dispatchEvent(new Event("friends:changed"));
+      await onDecline?.();
+      setStatus("not_friends");        // optimistic; parent will re-sync status
     } catch {
-      toast.error("Failed to decline");
+      // parent already toasts on error
     }
   };
 
@@ -132,13 +134,13 @@ const UserCard = ({ otherUser, friendshipStatus, onRequestSent }) => {
     ? `Joined on ${new Date(otherUser.createdAt).toLocaleDateString()}`
     : "New member";
 
+  const initial = (otherUser.name?.trim()?.charAt(0) || "?").toUpperCase();
+
   return (
     <div className="bg-surface p-6 rounded-xl shadow-md flex items-center justify-between transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       <div className="flex items-center">
         <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-          <span className="text-xl font-bold text-primary">
-            {otherUser.name?.charAt(0)}
-          </span>
+          <span className="text-xl font-bold text-primary">{initial}</span>
         </div>
         <div className="ml-4">
           <Link to={`/profile/${otherUser._id}`} className="hover:underline">

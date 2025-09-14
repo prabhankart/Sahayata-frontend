@@ -22,6 +22,7 @@ export default function GroupPage() {
   const navigate = useNavigate();
 
   const [group, setGroup] = useState(null);
+  const [busyPledge, setBusyPledge] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState(null);
@@ -31,6 +32,10 @@ export default function GroupPage() {
   const [typingUsers, setTypingUsers] = useState({});
   const [preview, setPreview] = useState(null);
   const [postPickerOpen, setPostPickerOpen] = useState(false);
+
+  // STAGE0 (Ordering + pagination cursor)
+  const [cursor, setCursor] = useState(null);       // server's nextBefore
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const socketRef = useRef(null);
   const listRef = useRef(null);
@@ -46,9 +51,33 @@ export default function GroupPage() {
     if (!group || !user) return false;
     return (group.members || []).some((m) => (m._id || m) === user._id);
   }, [group, user]);
-
+const isPledged = useMemo(() => {
+  if (!group || !user) return false;
+  return (group.pledgedHelpers || []).some((p) => (p._id || p) === user._id);
+}, [group, user]);
   const scrollToBottom = () => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  };
+const togglePledge = async () => {
+  try {
+    setBusyPledge(true);
+    const url = `${API_URL}/api/groups/${groupId}/${isPledged ? "unpledge" : "pledge"}`;
+    const { data } = await axios.post(url, {}, auth);
+    setGroup(data);
+  } catch {
+    toast.error("Could not update pledge.");
+  } finally {
+    setBusyPledge(false);
+  }
+};
+  // STAGE0: helper to insert batch (server sends DESC; we reverse here)
+  const addBatch = (serverBatchDesc) => {
+    const asc = [...serverBatchDesc].reverse();
+    setMessages((prev) => {
+      const byKey = new Map((prev || []).map((m) => [m._id || m.clientId, m]));
+      asc.forEach((m) => byKey.set(m._id || m.clientId, m));
+      return Array.from(byKey.values());
+    });
   };
 
   useEffect(() => {
@@ -60,27 +89,28 @@ export default function GroupPage() {
 
     (async () => {
       try {
-        const [{ data: g }, { data: msgs }] = await Promise.all([
+        const [{ data: g }, { data: page }] = await Promise.all([
           axios.get(`${API_URL}/api/groups/${groupId}`, auth),
-          axios.get(`${API_URL}/api/groups/${groupId}/messages`, auth),
+          axios.get(`${API_URL}/api/groups/${groupId}/messages?limit=50`, auth), // STAGE0: paginated, DESC
         ]);
         setGroup(g);
-        setMessages(msgs || []);
+        addBatch(page.data || []);
+        setCursor(page.nextBefore || null);          // STAGE0: keep cursor
         setTimeout(scrollToBottom, 50);
+
+        // STAGE0 (Read state): mark read on open
+        axios.post(`${API_URL}/api/groups/${groupId}/read`, {}, auth).catch(() => {});
       } catch {
         toast.error("Could not load chat history.");
       }
     })();
 
-    // ✅ websocket with polling fallback (clears dev console warning)
-    const s = io(API_URL, {
-      transports: ["websocket", "polling"],
-      withCredentials: true,
-    });
+    // ✅ websocket with polling fallback
+    const s = io(API_URL, { transports: ["websocket", "polling"], withCredentials: true });
     socketRef.current = s;
     s.emit("group:join", groupId);
 
-    // strong dedupe for echoed messages
+    // STAGE0 (De-dup): replace optimistic by matching clientId or contents
     s.on("group:message", (msg) => {
       setMessages((prev) => {
         if (msg._id && prev.some((m) => m._id === msg._id)) return prev;
@@ -124,6 +154,24 @@ export default function GroupPage() {
   const emitTyping = () =>
     socketRef.current?.emit("group:typing", { groupId, userId: user._id, name: user.name });
 
+  // STAGE0: load older page
+  const loadOlder = async () => {
+    if (!cursor) return;
+    try {
+      setLoadingOlder(true);
+      const { data: page } = await axios.get(
+        `${API_URL}/api/groups/${groupId}/messages?limit=50&before=${encodeURIComponent(cursor)}`,
+        auth
+      );
+      addBatch(page.data || []);
+      setCursor(page.nextBefore || null);
+    } catch {
+      toast.error("Could not load older messages.");
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
   const send = async () => {
     if ((!text.trim() && attachments.length === 0) || !isMember) return;
 
@@ -154,9 +202,12 @@ export default function GroupPage() {
         auth
       );
       setMessages((p) => p.map((m) => (m.clientId === clientId ? data : m)));
-    } catch {
+
+      // STAGE0 (Read state): update read cursor after own send to keep unread = 0
+      axios.post(`${API_URL}/api/groups/${groupId}/read`, {}, auth).catch(() => {});
+    } catch (e) {
       setMessages((p) => p.filter((m) => m.clientId !== clientId));
-      toast.error("Failed to send.");
+      toast.error(e?.response?.data?.message || "Failed to send.");
     }
   };
 
@@ -167,6 +218,7 @@ export default function GroupPage() {
       const { data } = await axios.get(`${API_URL}/api/groups/${groupId}`, auth);
       setGroup(data);
       toast.success("Joined!");
+      axios.post(`${API_URL}/api/groups/${groupId}/read`, {}, auth).catch(() => {});
     } catch {
       toast.error("Could not join group.");
     } finally {
@@ -179,7 +231,7 @@ export default function GroupPage() {
     if (!file) return;
     try {
       const formData = new FormData();
-      // support both keys
+      // support both keys used across code
       formData.append("file", file);
       formData.append("image", file);
 
@@ -229,7 +281,7 @@ export default function GroupPage() {
 
   return (
     <div className="mx-auto max-w-5xl p-6">
-      {/* Header (simple) */}
+      {/* Header (simplified) */}
       <div className="mb-4 rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -262,6 +314,19 @@ export default function GroupPage() {
       {/* Chat */}
       <div className="flex h-[72vh] max-h-[780px] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white/90 shadow-sm">
         <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+          {/* STAGE0: Load older messages */}
+          {cursor && (
+            <div className="flex justify-center">
+              <button
+                onClick={loadOlder}
+                disabled={loadingOlder}
+                className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+              >
+                {loadingOlder ? "Loading…" : "Load older messages"}
+              </button>
+            </div>
+          )}
+
           {messages.length === 0 && (
             <div className="py-10 text-center text-sm text-gray-500">No messages yet.</div>
           )}
@@ -353,8 +418,8 @@ export default function GroupPage() {
                             )}
                             {a.type === "post" && a.postRef && (
                               <Link
-                                to={`/post/${a.postRef._id}`}  // ✅ singular route
-                                className="block rounded-xl border bg-white text-gray-900 hover:bg-gray-50 p-3" // ✅ force dark text
+                                to={`/post/${a.postRef._id}`}
+                                className="block rounded-xl border bg-white text-gray-900 hover:bg-gray-50 p-3"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <div className="flex items-center gap-3">
@@ -368,9 +433,7 @@ export default function GroupPage() {
                                     <div className="h-14 w-14 rounded-lg bg-gray-100 border" />
                                   )}
                                   <div className="min-w-0">
-                                    <div className="text-sm font-semibold truncate">
-                                      {a.postRef.title}
-                                    </div>
+                                    <div className="text-sm font-semibold truncate">{a.postRef.title}</div>
                                     <div className="mt-0.5 text-xs text-gray-600">
                                       Status: <span className="font-medium">{a.postRef.status || "Open"}</span>
                                     </div>
@@ -483,7 +546,7 @@ export default function GroupPage() {
         </div>
       </div>
 
-      {/* Post Picker Modal (forces dark text) */}
+      {/* Post Picker Modal */}
       {postPickerOpen && (
         <PostPicker
           token={user.token}
@@ -516,15 +579,15 @@ export default function GroupPage() {
         </div>
       )}
 
-      <RightDrawer
-        open={drawer}
-        onClose={() => setDrawer(false)}
-        group={group}
-        // in case your RightDrawer expects these props:
-        onPledgeToggle={() => {}}
-        isPledged={false}
-        busyPledge={false}
-      />
+     <RightDrawer
+  open={drawer}
+  onClose={() => setDrawer(false)}
+  group={group}
+  onPledgeToggle={togglePledge}
+  isPledged={isPledged}
+  busyPledge={busyPledge}
+/>
+
     </div>
   );
 }
@@ -561,7 +624,6 @@ function PostPicker({ token, onClose, onPick }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      {/* ✅ force dark text so it never inherits white from chat bubble */}
       <div className="w-full max-w-xl rounded-2xl bg-white text-gray-900 shadow-xl ring-1 ring-black/5">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-bold">Share one of your posts</h3>

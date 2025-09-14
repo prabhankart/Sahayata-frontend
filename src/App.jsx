@@ -30,6 +30,10 @@ import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import GroupsPage from './pages/GroupsPage';
 import GroupPage from './pages/GroupPage';
+
+// ⬇️ NEW: initialize i18n (no code changes needed elsewhere)
+import './i18n';
+
 function LayoutWrapper({ children }) {
   const location = useLocation();
   const isMessagesPage = location.pathname.startsWith("/messages");
@@ -78,7 +82,7 @@ function App() {
           <Route path="/create-post" element={<ProtectedRoute><CreatePostPage /></ProtectedRoute>} />
           <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
           <Route path="/groups" element={<GroupsPage />} />
-<Route path="/groups/:groupId" element={<GroupPage />} />
+          <Route path="/groups/:groupId" element={<GroupPage />} />
         </Routes>
       </LayoutWrapper>
     </Router>

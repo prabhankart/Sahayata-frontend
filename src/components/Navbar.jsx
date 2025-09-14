@@ -10,6 +10,7 @@ import {
   EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import FriendRequestDropdown from "./FriendRequestDropdown";
+import { useTranslation } from "react-i18next";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -50,6 +51,7 @@ const NavItem = ({ to, children, onClick }) => (
 );
 
 export default function Navbar() {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,6 +66,15 @@ export default function Navbar() {
   const friendMenuRef = useRef(null);
   useClickOutside(langMenuRef, () => setIsLangMenuOpen(false));
   useClickOutside(friendMenuRef, () => setIsFriendDropdownOpen(false));
+
+  const languageCodes = ["en","hi","es","mr","gu","bn","ta","te","kn","pa","ur"];
+  const languages = languageCodes.map(code => ({ code, label: t(`lang.${code}`) }));
+
+  const changeLang = (code) => {
+    i18n.changeLanguage(code);
+    try { window.localStorage.setItem("lang", code); } catch {}
+    setIsLangMenuOpen(false);
+  };
 
   // keep friend badge fresh
   useEffect(() => {
@@ -95,6 +106,8 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const firstName = user?.name?.split(" ")?.[0] || user?.name || "";
+
   return (
     <header className="sticky top-0 z-50">
       {/* ultra-light frosted bar */}
@@ -109,28 +122,28 @@ export default function Navbar() {
                 onClick={() => navigate("/messages")}
                 className="rounded-md bg-white px-3 py-2 text-sm text-gray-700 border border-gray-200 hover:bg-gray-50"
               >
-                ⬅ Back
+                {t("actions.back")}
               </button>
             )}
             <Link
               to="/"
               className="text-3xl font-extrabold bg-gradient-to-r from-violet-600 via-fuchsia-500 to-pink-500 bg-clip-text text-transparent"
             >
-              Sahayata
+              {t("brand")}
             </Link>
           </div>
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center space-x-1 text-base">
-            <NavItem to="/community">Community</NavItem>
-            <NavItem to="/map">Map View</NavItem>
-            <NavItem to="/connect">Connect</NavItem>
-            <NavItem to="/groups">Groups</NavItem>
+            <NavItem to="/community">{t("nav.community")}</NavItem>
+            <NavItem to="/map">{t("nav.map")}</NavItem>
+            <NavItem to="/connect">{t("nav.connect")}</NavItem>
+            <NavItem to="/groups">{t("nav.groups")}</NavItem>
           </nav>
 
           {/* Right actions */}
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/help" className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition" aria-label="Help">
+            <Link to="/help" className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition" aria-label={t("actions.help")}>
               <QuestionMarkCircleIcon className="h-6 w-6 text-gray-500" />
             </Link>
 
@@ -140,17 +153,20 @@ export default function Navbar() {
                 onClick={() => setIsLangMenuOpen((v) => !v)}
                 className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
                 aria-label="Language"
+                title="Language"
               >
                 <GlobeAltIcon className="h-6 w-6 text-gray-500" />
               </button>
               {isLangMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100">
-                  {["English (US)", "हिन्दी", "Español"].map((lang) => (
+                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100">
+                  {languages.map((l) => (
                     <button
-                      key={lang}
-                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      key={l.code}
+                      onClick={() => changeLang(l.code)}
+                      className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      {lang}
+                      <span>{l.label}</span>
+                      {i18n.language === l.code && <span>✓</span>}
                     </button>
                   ))}
                 </div>
@@ -162,7 +178,7 @@ export default function Navbar() {
                 <Link
                   to="/messages"
                   className="relative rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
-                  aria-label="Messages"
+                  aria-label={t("actions.messages")}
                 >
                   <EnvelopeIcon className="h-6 w-6 text-gray-500" />
                 </Link>
@@ -172,7 +188,7 @@ export default function Navbar() {
                   <button
                     onClick={() => setIsFriendDropdownOpen((v) => !v)}
                     className="relative rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
-                    aria-label="Friend requests"
+                    aria-label={t("actions.friendRequests")}
                   >
                     <UserGroupIcon className="h-6 w-6 text-gray-500" />
                     {pendingRequestCount > 0 && (
@@ -191,21 +207,21 @@ export default function Navbar() {
                   to="/create-post"
                   className="rounded-md px-3 py-2 text-sm font-semibold text-gray-700 hover:text-violet-700 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
                 >
-                  Create Post
+                  {t("actions.createPost")}
                 </Link>
 
                 <Link
                   to={`/profile/${user._id}`}
                   className="rounded-md px-3 py-2 text-sm font-semibold text-gray-700 hover:text-violet-700 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
                 >
-                  Hi, {user.name}
+                  {t("greeting", { name: firstName })}
                 </Link>
 
                 <button
                   onClick={handleLogout}
                   className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:shadow transition"
                 >
-                  Logout
+                  {t("actions.logout")}
                 </button>
               </>
             ) : (
@@ -213,7 +229,7 @@ export default function Navbar() {
                 to="/login"
                 className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2 text-sm font-bold text-white shadow-sm hover:shadow transition"
               >
-                Sign In
+                {t("actions.signIn")}
               </Link>
             )}
           </div>
@@ -235,22 +251,22 @@ export default function Navbar() {
       {isMenuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white/95 backdrop-blur-sm px-4 pb-5 pt-4 shadow-sm">
           <div className="space-y-2">
-            <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Community</NavLink>
-            <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Map View</NavLink>
-            <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Connect</NavLink>
-            <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Groups</NavLink>
+            <NavLink to="/community" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("nav.community")}</NavLink>
+            <NavLink to="/map" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("nav.map")}</NavLink>
+            <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("nav.connect")}</NavLink>
+            <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("nav.groups")}</NavLink>
 
             {user && (
               <>
-                <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Create Post</NavLink>
-                <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">Messages</NavLink>
+                <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("actions.createPost")}</NavLink>
+                <NavLink to="/messages" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("actions.messages")}</NavLink>
 
                 <div className="relative">
                   <button
                     onClick={() => setIsFriendDropdownOpen((v) => !v)}
                     className="relative rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition"
                   >
-                    Friend Requests
+                    {t("actions.friendRequests")}
                     {pendingRequestCount > 0 && (
                       <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-rose-500 align-middle"></span>
                     )}
@@ -271,11 +287,11 @@ export default function Navbar() {
           <div className="mt-4 border-t border-gray-100 pt-4">
             {user ? (
               <button onClick={handleLogout} className="w-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 py-2 text-center font-semibold text-white shadow-sm hover:shadow transition">
-                Logout
+                {t("actions.logout")}
               </button>
             ) : (
               <Link to="/login" onClick={() => setIsMenuOpen(false)} className="block w-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 py-2 text-center font-semibold text-white shadow-sm hover:shadow transition">
-                Sign In
+                {t("actions.signIn")}
               </Link>
             )}
           </div>
