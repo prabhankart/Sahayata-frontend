@@ -227,7 +227,7 @@ const PostDetailsPage = () => {
           </div>
 
           {/* RIGHT SECTION */}
-          <div className="lg:col-span-1 space-y-8 lg:sticky lg:top-24">
+          <div className="lg:col-span-1 space-y-8 lg:sticky lg:top-24 min-w-0">
             {/* Post details */}
             <div className="bg-white/90 backdrop-blur p-6 rounded-2xl shadow border border-zinc-200/70">
               <h3 className="text-xl font-bold text-gray-900 border-b border-zinc-200/70 pb-3 mb-4">
@@ -341,15 +341,14 @@ const PostDetailsPage = () => {
             </div>
 
             {/* Chat */}
-            <div className="min-h-[450px]">
+            <div className="min-h-[360px] lg:max-h-[80vh] min-w-0">
               {user && canViewChat && (
                 <div className="bg-white/90 backdrop-blur p-6 rounded-2xl shadow border border-zinc-200/70 h-full flex flex-col">
-                 <div className="flex justify-between items-center border-b border-zinc-200/70 pb-3 mb-4 flex-shrink-0">
-  <h3 className="text-xl font-bold text-gray-900">Project Chat</h3>
- 
-</div>
+                  <div className="flex justify-between items-center border-b border-zinc-200/70 pb-3 mb-4 flex-shrink-0">
+                    <h3 className="text-xl font-bold text-gray-900">Project Chat</h3>
+                  </div>
 
-                  <div className="flex-grow">
+                  <div className="flex-grow min-w-0">
                     <ChatBox
                       postId={post?._id}
                       persistedMessages={chatMessages}

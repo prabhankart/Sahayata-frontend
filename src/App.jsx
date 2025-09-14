@@ -31,8 +31,11 @@ import TermsPage from './pages/TermsPage';
 import GroupsPage from './pages/GroupsPage';
 import GroupPage from './pages/GroupPage';
 
-// ⬇️ NEW: initialize i18n (no code changes needed elsewhere)
+// ⬇️ load i18n globally (as you already had)
 import './i18n';
+
+// ⬇️ NEW: global DOM translator (drop-in)
+import GlobalTranslator from './components/GlobalTranslator';
 
 function LayoutWrapper({ children }) {
   const location = useLocation();
@@ -41,6 +44,10 @@ function LayoutWrapper({ children }) {
   return (
     <div className="bg-slate-900 min-h-screen text-white flex flex-col">
       <Toaster position="top-center" reverseOrder={false} />
+
+      {/* ⬇️ Mount once: will translate everything on the page */}
+      <GlobalTranslator />
+
       {!isMessagesPage && <Navbar />}
       {!isMessagesPage && <Breadcrumbs />}
 

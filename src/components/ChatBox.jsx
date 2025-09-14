@@ -327,10 +327,11 @@ export default function ChatBox({ postId }) {
   };
   const cancelLongPress = () => clearTimeout(longPressRef.current);
 
-  const containerHeight = "h-[60vh] md:h-[70vh]"; // prevents overflow on small screens
+  // Tighter/safer default heights on small screens
+  const containerHeight = "h-[50vh] md:h-[65vh] lg:h-[70vh]";
 
   return (
-    <div className={`flex w-full flex-col ${containerHeight} max-h-[78vh]`}>
+    <div className={`flex w-full min-w-0 flex-col ${containerHeight} max-h-[78vh]`}>
       {/* Top bar */}
       <div className="mb-2 flex items-center justify-between">
         <h4 className="font-semibold text-gray-700">
@@ -367,7 +368,7 @@ export default function ChatBox({ postId }) {
       {/* Messages */}
       <div
         ref={listRef}
-        className="mb-3 flex-1 overflow-y-auto rounded-xl bg-white/70 p-3 ring-1 ring-gray-100"
+        className="mb-3 flex-1 min-w-0 overflow-y-auto rounded-xl bg-white/70 p-3 ring-1 ring-gray-100 scroll-smooth overscroll-contain"
       >
         {!loading && messages.length === 0 && (
           <div className="py-10 text-center text-sm text-gray-500">No messages yet.</div>
@@ -475,13 +476,14 @@ export default function ChatBox({ postId }) {
       </div>
 
       {/* Composer */}
-      <form onSubmit={handleSendMessage} className="mt-auto flex items-center gap-2">
+      <form onSubmit={handleSendMessage} className="mt-auto flex w-full min-w-0 items-center gap-2">
         <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
         <button
           type="button"
           onClick={() => fileRef.current.click()}
-          className="rounded bg-gray-100 px-2 py-1 text-sm"
+          className="flex-shrink-0 rounded bg-gray-100 px-2 py-1 text-sm"
           title="Attach"
+          aria-label="Attach"
         >
           📎
         </button>
@@ -491,7 +493,7 @@ export default function ChatBox({ postId }) {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder={editing ? "Edit your message…" : "Type your message…"}
-          className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+          className="w-0 flex-1 min-w-0 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
         />
 
         {editing ? (
@@ -501,7 +503,7 @@ export default function ChatBox({ postId }) {
               setEditing(null);
               setNewMessage("");
             }}
-            className="rounded-xl bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-300"
+            className="flex-shrink-0 rounded-xl bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-300"
           >
             Cancel
           </button>
@@ -510,14 +512,14 @@ export default function ChatBox({ postId }) {
         <button
           type="submit"
           disabled={!newMessage.trim() && attachments.length === 0}
-          className="rounded-xl bg-gradient-to-r from-primary to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
+          className="flex-shrink-0 rounded-xl bg-gradient-to-r from-primary to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-95 disabled:opacity-50"
         >
           {editing ? "Save" : "Send"}
         </button>
       </form>
 
       {attachments.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+        <div className="mt-2 flex gap-2 overflow-x-auto whitespace-nowrap text-xs text-gray-600">
           {attachments.map((a, i) => (
             <div key={i} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 cursor-pointer">
               {a.type === "image" ? "📷" : a.type === "video" ? "🎥" : a.type === "audio" ? "🎵" : "📎"} {a.name}
