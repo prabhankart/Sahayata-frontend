@@ -23,18 +23,22 @@ export default function GroupPage() {
 
   const [group, setGroup] = useState(null);
   const [busyPledge, setBusyPledge] = useState(false);
+
+  // chat state
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState(null);
   const [attachments, setAttachments] = useState([]);
-  const [joining, setJoining] = useState(false);
-  const [drawer, setDrawer] = useState(false);
   const [typingUsers, setTypingUsers] = useState({});
   const [preview, setPreview] = useState(null);
+
+  // UI state
+  const [joining, setJoining] = useState(false);
+  const [drawer, setDrawer] = useState(false);
   const [postPickerOpen, setPostPickerOpen] = useState(false);
 
-  // STAGE0 (Ordering + pagination cursor)
-  const [cursor, setCursor] = useState(null);       // server's nextBefore
+  // pagination (server returns DESC, we reverse for UI)
+  const [cursor, setCursor] = useState(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   const socketRef = useRef(null);
@@ -51,28 +55,32 @@ export default function GroupPage() {
     if (!group || !user) return false;
     return (group.members || []).some((m) => (m._id || m) === user._id);
   }, [group, user]);
-const isPledged = useMemo(() => {
-  if (!group || !user) return false;
-  return (group.pledgedHelpers || []).some((p) => (p._id || p) === user._id);
-}, [group, user]);
+
+  const isPledged = useMemo(() => {
+    if (!group || !user) return false;
+    return (group.pledgedHelpers || []).some((p) => (p._id || p) === user._id);
+  }, [group, user]);
+
   const scrollToBottom = () => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   };
-const togglePledge = async () => {
-  try {
-    setBusyPledge(true);
-    const url = `${API_URL}/api/groups/${groupId}/${isPledged ? "unpledge" : "pledge"}`;
-    const { data } = await axios.post(url, {}, auth);
-    setGroup(data);
-  } catch {
-    toast.error("Could not update pledge.");
-  } finally {
-    setBusyPledge(false);
-  }
-};
-  // STAGE0: helper to insert batch (server sends DESC; we reverse here)
+
+  const togglePledge = async () => {
+    try {
+      setBusyPledge(true);
+      const url = `${API_URL}/api/groups/${groupId}/${isPledged ? "unpledge" : "pledge"}`;
+      const { data } = await axios.post(url, {}, auth);
+      setGroup(data);
+    } catch {
+      toast.error("Could not update pledge.");
+    } finally {
+      setBusyPledge(false);
+    }
+  };
+
+  // helper to insert a server batch (server gives DESC)
   const addBatch = (serverBatchDesc) => {
-    const asc = [...serverBatchDesc].reverse();
+    const asc = [...(serverBatchDesc || [])].reverse();
     setMessages((prev) => {
       const byKey = new Map((prev || []).map((m) => [m._id || m.clientId, m]));
       asc.forEach((m) => byKey.set(m._id || m.clientId, m));
@@ -91,26 +99,29 @@ const togglePledge = async () => {
       try {
         const [{ data: g }, { data: page }] = await Promise.all([
           axios.get(`${API_URL}/api/groups/${groupId}`, auth),
-          axios.get(`${API_URL}/api/groups/${groupId}/messages?limit=50`, auth), // STAGE0: paginated, DESC
+          axios.get(`${API_URL}/api/groups/${groupId}/messages?limit=50`, auth),
         ]);
         setGroup(g);
         addBatch(page.data || []);
-        setCursor(page.nextBefore || null);          // STAGE0: keep cursor
+        setCursor(page.nextBefore || null);
         setTimeout(scrollToBottom, 50);
 
-        // STAGE0 (Read state): mark read on open
+        // mark read on open
         axios.post(`${API_URL}/api/groups/${groupId}/read`, {}, auth).catch(() => {});
       } catch {
         toast.error("Could not load chat history.");
       }
     })();
 
-    // ✅ websocket with polling fallback
-    const s = io(API_URL, { transports: ["websocket", "polling"], withCredentials: true });
+    // socket (websocket w/ polling fallback)
+    const s = io(API_URL, {
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
     socketRef.current = s;
     s.emit("group:join", groupId);
 
-    // STAGE0 (De-dup): replace optimistic by matching clientId or contents
+    // de-dup optimistic
     s.on("group:message", (msg) => {
       setMessages((prev) => {
         if (msg._id && prev.some((m) => m._id === msg._id)) return prev;
@@ -154,7 +165,6 @@ const togglePledge = async () => {
   const emitTyping = () =>
     socketRef.current?.emit("group:typing", { groupId, userId: user._id, name: user.name });
 
-  // STAGE0: load older page
   const loadOlder = async () => {
     if (!cursor) return;
     try {
@@ -202,8 +212,7 @@ const togglePledge = async () => {
         auth
       );
       setMessages((p) => p.map((m) => (m.clientId === clientId ? data : m)));
-
-      // STAGE0 (Read state): update read cursor after own send to keep unread = 0
+      // update read cursor after own send
       axios.post(`${API_URL}/api/groups/${groupId}/read`, {}, auth).catch(() => {});
     } catch (e) {
       setMessages((p) => p.filter((m) => m.clientId !== clientId));
@@ -277,11 +286,18 @@ const togglePledge = async () => {
     toast.success("Post attached!");
   };
 
+  // Close preview on ESC
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && setPreview(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   if (!group) return <div className="p-6">Loading…</div>;
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      {/* Header (simplified) */}
+    <div className="mx-auto max-w-5xl p-4 sm:p-6">
+      {/* Header */}
       <div className="mb-4 rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -311,12 +327,22 @@ const togglePledge = async () => {
         </div>
       </div>
 
-      {/* Chat */}
-      <div className="flex h-[72vh] max-h-[780px] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white/90 shadow-sm">
-        <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-          {/* STAGE0: Load older messages */}
+      {/* Chat card */}
+      <div
+        className="
+          flex flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white/90 shadow-sm
+          min-h-[60vh] md:min-h-[70vh]
+          max-h-[calc(100dvh-180px)]
+        "
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        {/* Messages list */}
+        <div
+          ref={listRef}
+          className="flex-1 overflow-y-auto p-3 sm:p-4 overscroll-contain"
+        >
           {cursor && (
-            <div className="flex justify-center">
+            <div className="mb-2 flex justify-center">
               <button
                 onClick={loadOlder}
                 disabled={loadingOlder}
@@ -341,7 +367,7 @@ const togglePledge = async () => {
 
             return (
               <div key={m._id || m.clientId} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] ${mine ? "items-end" : "items-start"} flex gap-2`}>
+                <div className={`flex gap-2 ${mine ? "items-end" : "items-start"} max-w-[92%] sm:max-w-[80%]`}>
                   {!mine && (
                     <div className="h-9 w-9 shrink-0 rounded-full bg-violet-200 text-violet-800 flex items-center justify-center font-bold">
                       {name?.[0]?.toUpperCase() || "U"}
@@ -350,11 +376,10 @@ const togglePledge = async () => {
 
                   <div
                     onClick={() => setReplyTo(m)}
-                    className={`cursor-pointer rounded-2xl px-4 py-2 shadow-sm border ${
-                      mine
+                    className={`min-w-0 cursor-pointer rounded-2xl px-3 sm:px-4 py-2 shadow-sm border break-words
+                      ${mine
                         ? "bg-gradient-to-r from-primary to-fuchsia-600 text-white border-primary/60"
-                        : "bg-white text-gray-900 border-gray-200"
-                    }`}
+                        : "bg-white text-gray-900 border-gray-200"}`}
                   >
                     <div className={`text-[11px] mb-1 ${mine ? "text-white/85" : "text-gray-600"} font-semibold`}>
                       {name} • {time}
@@ -382,7 +407,7 @@ const togglePledge = async () => {
                               <img
                                 src={a.url}
                                 alt={a.name}
-                                className="max-h-48 rounded-lg border cursor-zoom-in"
+                                className="max-h-56 w-full h-auto rounded-lg border cursor-zoom-in object-contain"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setPreview({ type: "image", url: a.url, name: a.name });
@@ -393,7 +418,7 @@ const togglePledge = async () => {
                               <video
                                 src={a.url}
                                 controls
-                                className="max-h-64 rounded-lg border"
+                                className="max-h-64 w-full rounded-lg border"
                                 onClick={(e) => e.stopPropagation()}
                               />
                             )}
@@ -410,7 +435,7 @@ const togglePledge = async () => {
                                 href={a.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-sm text-blue-600 underline"
+                                className="text-sm underline break-all"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {a.name || "Download file"}
@@ -456,22 +481,28 @@ const togglePledge = async () => {
           )}
         </div>
 
-        {/* Composer */}
-        <div className="border-t p-3">
+        {/* Composer - sticky within card (no viewport overflow) */}
+        <div
+          className="sticky bottom-0 z-10 border-t bg-white/95 backdrop-blur p-2 sm:p-3"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
+        >
           {replyTo && (
             <div className="mb-2 flex items-center justify-between rounded-lg border bg-gray-50 px-3 py-2 text-xs text-gray-700">
-              Replying to <strong className="ml-1">{replyTo.sender?.name || "User"}</strong>:{" "}
-              <span className="truncate ml-1">{replyTo.text}</span>
-              <button className="ml-2 text-gray-400 hover:text-gray-600" onClick={() => setReplyTo(null)}>
+              <div className="min-w-0 truncate">
+                Replying to <strong className="ml-1">{replyTo.sender?.name || "User"}</strong>:{" "}
+                <span className="truncate ml-1">{replyTo.text}</span>
+              </div>
+              <button className="ml-2 shrink-0 text-gray-400 hover:text-gray-600" onClick={() => setReplyTo(null)}>
                 ×
               </button>
             </div>
           )}
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 min-w-0">
             <input type="file" ref={fileRef} className="hidden" onChange={handleFileUpload} />
             <button
               onClick={() => fileRef.current?.click()}
-              className="rounded-xl p-3 text-gray-500 hover:bg-gray-100"
+              className="shrink-0 rounded-xl p-3 text-gray-500 hover:bg-gray-100"
               title="Attach file"
             >
               <PaperClipIcon className="h-5 w-5" />
@@ -479,7 +510,7 @@ const togglePledge = async () => {
 
             <button
               onClick={() => setPostPickerOpen(true)}
-              className="rounded-xl p-3 text-gray-500 hover:bg-gray-100"
+              className="shrink-0 rounded-xl p-3 text-gray-500 hover:bg-gray-100"
               title="Share one of my posts"
             >
               <SquaresPlusIcon className="h-5 w-5" />
@@ -494,23 +525,25 @@ const togglePledge = async () => {
               }}
               disabled={!isMember}
               placeholder={isMember ? "Type a message…" : "Join to send messages"}
-              className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-3 text-base text-gray-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
+              className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-base text-gray-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 disabled:bg-gray-50"
               onKeyDown={(e) => e.key === "Enter" && send()}
             />
+
             <button
               onClick={send}
               disabled={!isMember || (!text.trim() && attachments.length === 0)}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-fuchsia-600 px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-50"
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-50"
+              title="Send"
             >
               <PaperAirplaneIcon className="h-5 w-5 rotate-45" />
-              Send
+              <span className="hidden sm:inline">Send</span>
             </button>
           </div>
 
           {attachments.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600">
+            <div className="mt-2 flex w-full gap-2 overflow-x-auto text-xs text-gray-600">
               {attachments.map((a, i) => (
-                <div key={i} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1">
+                <div key={i} className="flex shrink-0 items-center gap-1 rounded bg-gray-100 px-2 py-1">
                   {a.type === "image"
                     ? "📷"
                     : a.type === "video"
@@ -520,7 +553,7 @@ const togglePledge = async () => {
                     : a.type === "post"
                     ? "🧩"
                     : "📎"}{" "}
-                  {a.name || a.postRef?.title || "Attachment"}
+                  <span className="max-w-[40vw] truncate">{a.name || a.postRef?.title || "Attachment"}</span>
                   <button
                     onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
                     className="ml-1 text-red-500"
@@ -568,7 +601,7 @@ const togglePledge = async () => {
             <XMarkIcon className="w-6 h-6 text-gray-700" />
           </button>
           {preview.type === "image" && (
-            <img src={preview.url} alt={preview.name || ""} className="w-full max-w-[80vw]" />
+            <img src={preview.url} alt={preview.name || ""} className="max-h-[90vh] max-w-[90vw] object-contain rounded" />
           )}
           {preview.type === "video" && (
             <video src={preview.url} controls autoPlay className="max-h-[90vh] max-w-[90vw] rounded" />
@@ -579,15 +612,14 @@ const togglePledge = async () => {
         </div>
       )}
 
-     <RightDrawer
-  open={drawer}
-  onClose={() => setDrawer(false)}
-  group={group}
-  onPledgeToggle={togglePledge}
-  isPledged={isPledged}
-  busyPledge={busyPledge}
-/>
-
+      <RightDrawer
+        open={drawer}
+        onClose={() => setDrawer(false)}
+        group={group}
+        onPledgeToggle={togglePledge}
+        isPledged={isPledged}
+        busyPledge={busyPledge}
+      />
     </div>
   );
 }
@@ -624,7 +656,7 @@ function PostPicker({ token, onClose, onPick }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white text-gray-900 shadow-xl ring-1 ring-black/5">
+      <div className="w-full max-w-xl rounded-2xl bg-white text-gray-900 shadow-xl ring-1 ring-black/5 flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-4 border-b">
           <h3 className="font-bold">Share one of your posts</h3>
           <button className="p-1 rounded hover:bg-gray-100" onClick={onClose}>
@@ -632,40 +664,41 @@ function PostPicker({ token, onClose, onPick }) {
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 border-b">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search my posts…"
             className="w-full rounded-lg border px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-indigo-200"
           />
-          <div className="mt-3 max-h-72 overflow-y-auto space-y-2">
-            {loading ? (
-              <div className="p-6 text-sm text-gray-500">Loading…</div>
-            ) : filtered.length === 0 ? (
-              <div className="p-6 text-sm text-gray-500">No posts found.</div>
-            ) : (
-              filtered.map((p) => (
-                <button
-                  key={p._id}
-                  onClick={() => onPick(p)}
-                  className="w-full text-left rounded-xl border p-3 hover:bg-gray-50"
-                >
-                  <div className="flex items-center gap-3">
-                    {p.coverUrl ? (
-                      <img src={p.coverUrl} className="h-12 w-12 rounded-lg object-cover border" />
-                    ) : (
-                      <div className="h-12 w-12 rounded-lg bg-gray-100 border" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="font-semibold truncate text-gray-900">{p.title}</div>
-                      <div className="text-xs text-gray-600">Status: {p.status || "Open"}</div>
-                    </div>
+        </div>
+
+        <div className="p-4 overflow-y-auto space-y-2">
+          {loading ? (
+            <div className="p-6 text-sm text-gray-500">Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-6 text-sm text-gray-500">No posts found.</div>
+          ) : (
+            filtered.map((p) => (
+              <button
+                key={p._id}
+                onClick={() => onPick(p)}
+                className="w-full text-left rounded-xl border p-3 hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  {p.coverUrl ? (
+                    <img src={p.coverUrl} className="h-12 w-12 rounded-lg object-cover border" />
+                  ) : (
+                    <div className="h-12 w-12 rounded-lg bg-gray-100 border" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate text-gray-900">{p.title}</div>
+                    <div className="text-xs text-gray-600">Status: {p.status || "Open"}</div>
                   </div>
-                </button>
-              ))
-            )}
-          </div>
+                </div>
+              </button>
+            ))
+          )}
         </div>
 
         <div className="p-3 border-t flex justify-end">
