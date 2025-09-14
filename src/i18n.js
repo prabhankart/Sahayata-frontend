@@ -1,194 +1,285 @@
-// src/i18n.js
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-const isBrowser = typeof window !== "undefined";
-
-function getInitialLang() {
-  if (!isBrowser) return "en";
-  const urlLang = new URLSearchParams(window.location.search).get("lang");
-  if (urlLang) return urlLang;
-  const saved = window.localStorage.getItem("lang");
-  return saved || "en";
-}
-
-const commonLangLabels = {
+/**
+ * Translations
+ * You can expand these freely. Keys used by your UI:
+ *   brand, nav.*, actions.*, greeting, lang.*
+ */
+const langLabels = {
   en: "English (US)",
   hi: "हिन्दी",
-  es: "Español",
   mr: "मराठी",
-  gu: "ગુજરાતી",
   bn: "বাংলা",
+  gu: "ગુજરાતી",
   ta: "தமிழ்",
   te: "తెలుగు",
   kn: "ಕನ್ನಡ",
   pa: "ਪੰਜਾਬੀ",
   ur: "اردو",
+  bho: "भोजपुरी",
+  awa: "अवधी",
+  mai: "मैथिली",
+  ml: "മലയാളം",
 };
 
-// ---- TRANSLATIONS ----
-// Keep brand localized; adjust if you prefer a single brand string.
 const resources = {
   en: {
     translation: {
       brand: "Sahayata",
       nav: { community: "Community", map: "Map View", connect: "Connect", groups: "Groups" },
       actions: {
-        help: "Help", messages: "Messages", friendRequests: "Friend Requests",
-        createPost: "Create Post", logout: "Logout", signIn: "Sign In", back: "Back"
+        back: "Back",
+        help: "Help",
+        messages: "Messages",
+        friendRequests: "Friend Requests",
+        createPost: "Create Post",
+        logout: "Logout",
+        signIn: "Sign In",
       },
       greeting: "Hi, {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
     },
   },
   hi: {
     translation: {
       brand: "सहायता",
-      nav: { community: "समुदाय", map: "मानचित्र दृश्य", connect: "कनेक्ट", groups: "समूह" },
+      nav: { community: "समुदाय", map: "मानचित्र", connect: "कनेक्ट", groups: "समूह" },
       actions: {
-        help: "सहायता", messages: "संदेश", friendRequests: "मित्र अनुरोध",
-        createPost: "पोस्ट बनाएँ", logout: "लॉगआउट", signIn: "साइन इन", back: "वापस"
+        back: "वापस",
+        help: "मदद",
+        messages: "संदेश",
+        friendRequests: "मित्र अनुरोध",
+        createPost: "पोस्ट बनाएँ",
+        logout: "लॉगआउट",
+        signIn: "साइन इन",
       },
       greeting: "नमस्ते, {{name}}",
-      lang: commonLangLabels,
-    },
-  },
-  es: {
-    translation: {
-      brand: "Sahayata",
-      nav: { community: "Comunidad", map: "Mapa", connect: "Conectar", groups: "Grupos" },
-      actions: {
-        help: "Ayuda", messages: "Mensajes", friendRequests: "Solicitudes de amistad",
-        createPost: "Crear publicación", logout: "Cerrar sesión", signIn: "Iniciar sesión", back: "Atrás"
-      },
-      greeting: "Hola, {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
     },
   },
   mr: {
     translation: {
-      brand: "सहायता",
-      nav: { community: "समुदाय", map: "नकाशा दृश्य", connect: "जोडा", groups: "गट" },
+      brand: "सहाय्यता",
+      nav: { community: "समूह", map: "नकाशा", connect: "जोडा", groups: "गट" },
       actions: {
-        help: "मदत", messages: "संदेश", friendRequests: "मित्र विनंत्या",
-        createPost: "पोस्ट तयार करा", logout: "लॉगआउट", signIn: "साइन इन", back: "मागे"
+        back: "मागे",
+        help: "मदत",
+        messages: "संदेश",
+        friendRequests: "मित्र विनंत्या",
+        createPost: "पोस्ट तयार करा",
+        logout: "लॉगआउट",
+        signIn: "साइन इन",
       },
       greeting: "नमस्कार, {{name}}",
-      lang: commonLangLabels,
-    },
-  },
-  gu: {
-    translation: {
-      brand: "સહાયતા",
-      nav: { community: "સમુદાય", map: "નકશો દૃશ્ય", connect: "કનેક્ટ", groups: "ગ્રુપ્સ" },
-      actions: {
-        help: "મદદ", messages: "સંદેશા", friendRequests: "મિત્ર વિનંતીઓ",
-        createPost: "પોસ્ટ બનાવો", logout: "લૉગઆઉટ", signIn: "સાઇન ઇન", back: "પાછળ"
-      },
-      greeting: "નમસ્તે, {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
     },
   },
   bn: {
     translation: {
       brand: "সহায়তা",
-      nav: { community: "সমাজ", map: "মানচিত্র দৃশ্য", connect: "কনেক্ট", groups: "গ্রুপ" },
+      nav: { community: "কমিউনিটি", map: "মানচিত্র", connect: "কনেক্ট", groups: "গ্রুপ" },
       actions: {
-        help: "সহায়তা", messages: "বার্তা", friendRequests: "বন্ধুত্ব অনুরোধ",
-        createPost: "পোস্ট তৈরি করুন", logout: "লগ আউট", signIn: "সাইন ইন", back: "ফিরে যান"
+        back: "ফিরে যান",
+        help: "সাহায্য",
+        messages: "বার্তা",
+        friendRequests: "বন্ধু অনুরোধ",
+        createPost: "পোস্ট তৈরি করুন",
+        logout: "লগআউট",
+        signIn: "সাইন ইন",
       },
-      greeting: "নমস্কার, {{name}}",
-      lang: commonLangLabels,
+      greeting: "হ্যালো, {{name}}",
+      lang: { ...langLabels },
+    },
+  },
+  gu: {
+    translation: {
+      brand: "સહાયતા",
+      nav: { community: "સમુદાય", map: "નકશો", connect: "કનેક્ટ", groups: "સમૂહો" },
+      actions: {
+        back: "પાછળ",
+        help: "મદદ",
+        messages: "સંદેશા",
+        friendRequests: "મિત્ર વિનંતિઓ",
+        createPost: "પોસ્ટ બનાવો",
+        logout: "લૉગઆઉટ",
+        signIn: "સાઇન ઇન",
+      },
+      greeting: "નમસ્તે, {{name}}",
+      lang: { ...langLabels },
     },
   },
   ta: {
     translation: {
       brand: "சகாயதா",
-      nav: { community: "சமூகம்", map: "வரைபடம்", connect: "இணை", groups: "குழுக்கள்" },
+      nav: { community: "சமூகங்கள்", map: "வரைபடம்", connect: "இணை", groups: "குழுக்கள்" },
       actions: {
-        help: "உதவி", messages: "செய்திகள்", friendRequests: "நண்பர் கோரிக்கைகள்",
-        createPost: "பதிவு உருவாக்கு", logout: "வெளியேறு", signIn: "உள்நுழை", back: "பின் செல்ல"
+        back: "பின்",
+        help: "உதவி",
+        messages: "செய்திகள்",
+        friendRequests: "நண்பர் கோரிக்கைகள்",
+        createPost: "பதிவு உருவாக்கு",
+        logout: "லாக் அவுட்",
+        signIn: "சைன் இன்",
       },
       greeting: "வணக்கம், {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
     },
   },
   te: {
     translation: {
       brand: "సహాయత",
-      nav: { community: "సమాజం", map: "పటము దృశ్యం", connect: "కనెక్ట్", groups: "గుంపులు" },
+      nav: { community: "సమూహం", map: "మ్యాప్", connect: "కనెక్ట్", groups: "గ్రూప్స్" },
       actions: {
-        help: "సహాయం", messages: "సందేశాలు", friendRequests: "స్నేహితుల అభ్యర్థనలు",
-        createPost: "పోస్ట్ సృష్టించండి", logout: "లాగౌట్", signIn: "సైన్ ఇన్", back: "వెనుకకు"
+        back: "వెనక్కి",
+        help: "సహాయం",
+        messages: "సందేశాలు",
+        friendRequests: "స్నేహితుల అభ్యర్థనలు",
+        createPost: "పోస్ట్ సృష్టించండి",
+        logout: "లాగౌట్",
+        signIn: "సైన్ ఇన్",
       },
       greeting: "నమస్తే, {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
     },
   },
   kn: {
     translation: {
       brand: "ಸಹಾಯತಾ",
-      nav: { community: "ಸಮುದಾಯ", map: "ನಕ್ಷೆ ದೃಶ್ಯ", connect: "ಕನೆಕ್ಟ್", groups: "ಗುಂಪುಗಳು" },
+      nav: { community: "ಸಮುದಾಯ", map: "ನಕ್ಷೆ", connect: "ಕನೆಕ್ಟ್", groups: "ಗುಂಪುಗಳು" },
       actions: {
-        help: "ಸಹಾಯ", messages: "ಸಂದೇಶಗಳು", friendRequests: "ಸ್ನೇಹ ವಿನಂತಿಗಳು",
-        createPost: "ಪೋಸ್ಟ್ ರಚಿಸಿ", logout: "ಲಾಗ್ ಔಟ್", signIn: "ಸೈನ್ ಇನ್", back: "ಹಿಂದೆ"
+        back: "ಹಿಂದೆ",
+        help: "ಸಹಾಯ",
+        messages: "ಸಂದೇಶಗಳು",
+        friendRequests: "ಸ್ನೇಹಿತರ ವಿನಂತಿಗಳು",
+        createPost: "ಪೋಸ್ಟ್ ರಚಿಸಿ",
+        logout: "ಲಾಗೌಟ್",
+        signIn: "ಸೈನ್ ಇನ್",
       },
       greeting: "ನಮಸ್ಕಾರ, {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
     },
   },
   pa: {
     translation: {
       brand: "ਸਹਾਇਤਾ",
-      nav: { community: "ਭਾਈਚਾਰਾ", map: "ਨਕਸ਼ਾ ਦ੍ਰਿਸ਼", connect: "ਕਨੈਕਟ", groups: "ਗਰੁੱਪ" },
+      nav: { community: "ਕਮਿਊਨਿਟੀ", map: "ਨਕਸ਼ਾ", connect: "ਕਨੈਕਟ", groups: "ਗ੍ਰੁੱਪ" },
       actions: {
-        help: "ਮਦਦ", messages: "ਸੁਨੇਹੇ", friendRequests: "ਦੋਸਤੀ ਬੇਨਤੀਆਂ",
-        createPost: "ਪੋਸਟ ਬਣਾਓ", logout: "ਲਾਗ ਆਉਟ", signIn: "ਸਾਇਨ ਇਨ", back: "ਵਾਪਸ"
+        back: "ਪਿੱਛੇ",
+        help: "ਮਦਦ",
+        messages: "ਸੁਨੇਹੇ",
+        friendRequests: "ਦੋਸਤ ਅਰਜ਼ੀਆਂ",
+        createPost: "ਪੋਸਟ ਬਣਾਓ",
+        logout: "ਲਾਗਆਉਟ",
+        signIn: "ਸਾਈਨ ਇਨ",
       },
-      greeting: "ਸਤ ਸ੍ਰੀ ਅਕਾਲ, {{name}}",
-      lang: commonLangLabels,
+      greeting: "ਸਤਿ ਸ਼੍ਰੀ ਅਕਾਲ, {{name}}",
+      lang: { ...langLabels },
     },
   },
   ur: {
     translation: {
       brand: "سہایتا",
-      nav: { community: "کمیونٹی", map: "نقشہ منظر", connect: "کنیکٹ", groups: "گروپس" },
+      nav: { community: "برادری", map: "نقشہ", connect: "کنیکٹ", groups: "گروپس" },
       actions: {
-        help: "مدد", messages: "پیغامات", friendRequests: "دوستی درخواستیں",
-        createPost: "پوسٹ بنائیں", logout: "لاگ آؤٹ", signIn: "سائن اِن", back: "واپس"
+        back: "واپس",
+        help: "مدد",
+        messages: "پیغامات",
+        friendRequests: "دوستی درخواستیں",
+        createPost: "پوسٹ بنائیں",
+        logout: "لاگ آؤٹ",
+        signIn: "سائن اِن",
       },
       greeting: "سلام، {{name}}",
-      lang: commonLangLabels,
+      lang: { ...langLabels },
+    },
+  },
+  bho: {
+    translation: {
+      brand: "सहायता",
+      nav: { community: "समुदाय", map: "नक्शा", connect: "जुड़ीं", groups: "गुरूप" },
+      actions: {
+        back: "पाछू",
+        help: "सहायता",
+        messages: "संदेस",
+        friendRequests: "दोस्ती निवेदन",
+        createPost: "पोस्ट बनाईं",
+        logout: "लॉगआउट",
+        signIn: "साइन इन",
+      },
+      greeting: "नमस्कार, {{name}}",
+      lang: { ...langLabels },
+    },
+  },
+  awa: {
+    translation: {
+      brand: "सहायता",
+      nav: { community: "समुदाय", map: "नक़्सा", connect: "जुड़ि", groups: "गुरुप" },
+      actions: {
+        back: "पाछे",
+        help: "मदद",
+        messages: "संदेस",
+        friendRequests: "दोस्त निवेदन",
+        createPost: "पोस्ट बनाव",
+        logout: "लॉगआउट",
+        signIn: "साइन इन",
+      },
+      greeting: "नमस्ते, {{name}}",
+      lang: { ...langLabels },
+    },
+  },
+  mai: {
+    translation: {
+      brand: "सहायता",
+      nav: { community: "समुदाय", map: "नक्शा", connect: "जोड़ू", groups: "समूह" },
+      actions: {
+        back: "पाछू",
+        help: "सहायता",
+        messages: "संदेश",
+        friendRequests: "सखिया निवेदन",
+        createPost: "पोस्ट बनाउ",
+        logout: "लॉगआउट",
+        signIn: "साइन इन",
+      },
+      greeting: "नमस्कार, {{name}}",
+      lang: { ...langLabels },
+    },
+  },
+  ml: {
+    translation: {
+      brand: "സഹായത",
+      nav: { community: "കമ്മ്യൂണിറ്റി", map: "മാപ്പ്", connect: "കണക്റ്റ്", groups: "ഗ്രൂപ്പുകൾ" },
+      actions: {
+        back: "തിരികെ",
+        help: "സഹായം",
+        messages: "സന്ദേശങ്ങൾ",
+        friendRequests: "സുഹൃത്ത് അഭ്യർത്ഥനകൾ",
+        createPost: "പോസ്റ്റ് സൃഷ്‌ടിക്കുക",
+        logout: "ലോഗ് ഔട്ട്",
+        signIn: "സൈൻ ഇൻ",
+      },
+      greeting: "നമസ്കാരം, {{name}}",
+      lang: { ...langLabels },
     },
   },
 };
 
-const initialLang = getInitialLang();
+// Restore saved language from localStorage (key: "lang")
+let savedLang = "en";
+try {
+  const s = localStorage.getItem("lang");
+  if (s && typeof s === "string") savedLang = s.split("-")[0];
+} catch {}
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: initialLang,
-    fallbackLng: "en",
-    interpolation: { escapeValue: false },
-  });
-
-// HTML <html lang="" dir=""> for accessibility + RTL
-function applyLangAttrs(code) {
-  if (!isBrowser) return;
-  const rtl = ["ur"]; // add 'ar' if you add Arabic later
-  document.documentElement.lang = code || "en";
-  document.documentElement.dir = rtl.includes(code) ? "rtl" : "ltr";
-}
-
-applyLangAttrs(initialLang);
-
-i18n.on("languageChanged", (lng) => {
-  if (isBrowser) {
-    try { window.localStorage.setItem("lang", lng); } catch {}
-  }
-  applyLangAttrs(lng);
+i18n.use(initReactI18next).init({
+  resources,
+  lng: savedLang,                 // start with saved language
+  fallbackLng: "en",
+  supportedLngs: Object.keys(langLabels),
+  nonExplicitSupportedLngs: true,
+  load: "languageOnly",
+  interpolation: { escapeValue: false },
+  react: { useSuspense: false },
 });
 
 export default i18n;

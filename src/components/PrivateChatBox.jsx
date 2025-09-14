@@ -20,6 +20,15 @@ const MENU_H = 260;
 // Reactions you want to support
 const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
+// Time formatter: "Just now" < 60s, then "3:27 PM"
+const humanTime = (dt) => {
+  if (!dt) return "";
+  const d = new Date(dt);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return "Just now";
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+};
+
 const PrivateChatBox = ({ conversation, onBack }) => {
   const { user } = useContext(AuthContext);
 
@@ -36,6 +45,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   const [showEmoji, setShowEmoji] = useState(false);
   const [preview, setPreview] = useState(null);
 
+  // minute ticker to re-render "Just now" → "3:27 PM" etc
+  const [, forceTick] = useState(0);
+
   const endRef = useRef(null);
   const fileRef = useRef(null);
   const longPressTimer = useRef(null);
@@ -44,6 +56,12 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   const other = conversation.participants.find((p) => p._id !== user._id);
   const toBottom = () => endRef.current?.scrollIntoView({ behavior: "smooth" });
 
+  // Rerender every 60s for live time labels
+  useEffect(() => {
+    const id = setInterval(() => forceTick((x) => x + 1), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // ----- Load messages + realtime receive
   useEffect(() => {
     socket.emit("joinConversation", { conversationId: conversation._id });
@@ -51,6 +69,14 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     const onReceive = (m) => {
       if (m.conversation === conversation._id) {
         setMessages((prev) => [...prev, m]);
+        // Mark read if the new message is from other user
+        const mine = (m.sender?._id || m.sender) === user._id;
+        if (!mine) {
+          socket.emit("conversation:markRead", {
+            conversationId: conversation._id,
+            userId: user._id,
+          });
+        }
       }
     };
     socket.on("receivePrivateMessage", onReceive);
@@ -62,13 +88,41 @@ const PrivateChatBox = ({ conversation, onBack }) => {
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
         setMessages(data.data || []);
+        // After loading, tell server we viewed them
+        socket.emit("conversation:markRead", {
+          conversationId: conversation._id,
+          userId: user._id,
+        });
       } catch {
         toast.error("Could not load chat history.");
       }
     })();
 
-    return () => socket.off("receivePrivateMessage", onReceive);
-  }, [conversation._id, user.token]);
+    return () => {
+      socket.off("receivePrivateMessage", onReceive);
+    };
+  }, [conversation._id, user.token, user._id]);
+
+  // Listen for read receipts -> flip ✓ → ✓✓ in real-time
+  useEffect(() => {
+    const onRead = ({ conversationId, readerId }) => {
+      if (conversationId !== conversation._id) return;
+      // If the other user read messages, update readBy on all of my messages
+      if (readerId && readerId !== user._id) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            const mine = (m.sender?._id || m.sender) === user._id;
+            if (!mine) return m;
+            const rb = (m.readBy || []).map((x) => (x?._id || x).toString());
+            if (rb.includes(readerId)) return m;
+            return { ...m, readBy: [...(m.readBy || []), readerId] };
+          })
+        );
+      }
+    };
+    socket.on("messagesRead", onRead);
+    return () => socket.off("messagesRead", onRead);
+  }, [conversation._id, user._id]);
 
   useEffect(toBottom, [messages]);
 
@@ -78,6 +132,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     const onKey = (e) => {
       if (e.key === "Escape") {
         setContextMenu(null);
+        setPreview(null); // close preview with Esc
         if (editingId) cancelEdit();
       }
     };
@@ -116,17 +171,13 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
     const onEdited = ({ messageId, text }) => {
       setMessages((prev) =>
-        prev.map((m) =>
-          m._id === messageId ? { ...m, text, edited: true } : m
-        )
+        prev.map((m) => (m._id === messageId ? { ...m, text, edited: true } : m))
       );
     };
 
     const onReacted = ({ messageId, reactions }) => {
       setMessages((prev) =>
-        prev.map((m) =>
-          m._id === messageId ? { ...m, reactions: reactions || [] } : m
-        )
+        prev.map((m) => (m._id === messageId ? { ...m, reactions: reactions || [] } : m))
       );
     };
 
@@ -191,7 +242,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
           )
         );
       }
-      socket.emit("deleteMessage", { messageId: msgId, mode });
+      socket.emit("deleteMessage", { messageId: msgId, mode, userId: user._id });
     } catch {
       toast.error("Failed to delete message");
     }
@@ -223,7 +274,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         { emoji },
         { headers: { Authorization: `Bearer ${user.token}` } }
       );
-      // server returns { messageId, reactions: [...] }
       setMessages((prev) =>
         prev.map((m) =>
           m._id === msg._id ? { ...m, reactions: data.reactions || [] } : m
@@ -259,7 +309,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     e.preventDefault();
     const text = newMessage.trim();
 
-    // EDIT MODE
     if (editingId) {
       if (!text) {
         toast.error("Message cannot be empty.");
@@ -286,7 +335,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
       return;
     }
 
-    // CREATE MODE
     if (!text && attachments.length === 0) return;
 
     socket.emit("sendPrivateMessage", {
@@ -301,13 +349,8 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     setShowEmoji(false);
   };
 
-  // ---- Menu placement
+  // helper
   const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
-  const menuStyle =
-    contextMenu && {
-      top: clamp(contextMenu.y, 12, window.innerHeight - MENU_H - 12),
-      left: clamp(contextMenu.x, 12, window.innerWidth - MENU_W - 12),
-    };
 
   return (
     <div className="flex flex-col h-[100dvh] relative overscroll-contain">
@@ -326,8 +369,11 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
       {/* Messages */}
       <div
-        className="flex-1 overflow-y-auto p-4 bg-gray-50 pb-28 overscroll-contain"
-        style={{ WebkitOverflowScrolling: 'touch' }}
+        className="flex-1 overflow-y-auto p-4 bg-gray-50 overscroll-contain"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+        }}
       >
         {messages.map((msg) => {
           const mine = (msg.sender?._id || msg.sender) === user._id;
@@ -341,11 +387,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
               onContextMenu={(e) => {
                 if (mine && !isDeleted) {
                   e.preventDefault();
-                  setContextMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    msg,
-                  });
+                  setContextMenu({ x: e.clientX, y: e.clientY, msg });
                 }
               }}
               onTouchStart={() => {
@@ -362,8 +404,10 @@ const PrivateChatBox = ({ conversation, onBack }) => {
               onTouchEnd={() => clearTimeout(longPressTimer.current)}
             >
               <div
-                className={`p-2 rounded-xl max-w-[80%] ${
-                  mine ? "bg-primary text-white" : "bg-white border"
+                className={`p-2 rounded-xl max-w-[85%] md:max-w-[80%] ${
+                  mine
+                    ? "bg-primary text-white"
+                    : "bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
                 }`}
               >
                 {/* Text */}
@@ -371,7 +415,11 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                   <div className="whitespace-pre-wrap break-words">
                     {msg.text}
                     {msg.edited && !isDeleted && (
-                      <span className={`ml-2 text-[10px] ${mine ? "text-white/80" : "text-gray-500"}`}>
+                      <span
+                        className={`ml-2 text-[10px] ${
+                          mine ? "text-white/80" : "text-gray-500"
+                        }`}
+                      >
                         (edited)
                       </span>
                     )}
@@ -409,7 +457,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                   </div>
                 )}
 
-                {/* Reaction summary (below bubble) */}
+                {/* Reaction summary */}
                 {summary.length > 0 && (
                   <div className={`mt-2 flex flex-wrap gap-1 ${mine ? "justify-end" : "justify-start"}`}>
                     {summary.map((r) => (
@@ -432,6 +480,22 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                     ))}
                   </div>
                 )}
+
+                {/* Footer: time + read ticks */}
+                <div
+                  className={`mt-1 flex items-center gap-1 text-[10px] ${
+                    mine ? "justify-end text-white/80" : "justify-start text-gray-500"
+                  }`}
+                >
+                  <span>{humanTime(msg.createdAt || msg._createdAt || msg.time)}</span>
+                  {mine && (
+                    <span className="leading-none">
+                      {(msg.readBy || []).some((id) => (id?._id || id) === other?._id)
+                        ? "✓✓"
+                        : "✓"}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -442,24 +506,18 @@ const PrivateChatBox = ({ conversation, onBack }) => {
       {/* Context menu overlay + menu */}
       {contextMenu && (
         <>
-          <div
-            className="fixed inset-0 z-[9998]"
-            onClick={() => setContextMenu(null)}
-          />
+          <div className="fixed inset-0 z-[9998]" onClick={() => setContextMenu(null)} />
           <div
             ref={menuRef}
             className="fixed z-[9999] bg-white border shadow-xl rounded-md w-[220px] overflow-hidden"
             style={{
-              top: Math.max(12, Math.min(contextMenu.y, window.innerHeight - MENU_H - 12)),
-              left: Math.max(12, Math.min(contextMenu.x, window.innerWidth - MENU_W - 12)),
+              top: clamp(contextMenu.y, 12, window.innerHeight - MENU_H - 12),
+              left: clamp(contextMenu.x, 12, window.innerWidth - MENU_W - 12),
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-3 py-2 font-semibold bg-blue-600 text-white">
-              Message options
-            </div>
+            <div className="px-3 py-2 font-semibold bg-blue-600 text-white">Message options</div>
 
-            {/* Edit */}
             <button
               disabled={
                 contextMenu.msg.deletedForEveryone ||
@@ -479,7 +537,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
               ✏️ Edit message
             </button>
 
-            {/* Delete for me */}
             <button
               className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-gray-100"
               onClick={() => {
@@ -490,11 +547,8 @@ const PrivateChatBox = ({ conversation, onBack }) => {
               🗑️ Delete for me
             </button>
 
-            {/* Delete for everyone */}
             <button
-              disabled={
-                (contextMenu.msg.sender?._id || contextMenu.msg.sender) !== user._id
-              }
+              disabled={(contextMenu.msg.sender?._id || contextMenu.msg.sender) !== user._id}
               className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-red-50 ${
                 (contextMenu.msg.sender?._id || contextMenu.msg.sender) !== user._id
                   ? "text-gray-400 cursor-not-allowed"
@@ -508,14 +562,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
               🗑️ Delete for everyone
             </button>
 
-            {/* Reactions row (working) */}
-            <div className="flex justify-around px-3 py-2 text-lg border-t bg-white">
+            <div className="flex justify-around px-3 py-2 text-lg border-top bg-white">
               {REACTION_SET.map((emo) => (
-                <button
-                  key={emo}
-                  onClick={() => toggleReaction(contextMenu.msg, emo)}
-                  className="hover:scale-110 transition"
-                >
+                <button key={emo} onClick={() => toggleReaction(contextMenu.msg, emo)} className="hover:scale-110 transition">
                   {emo}
                 </button>
               ))}
@@ -526,17 +575,13 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
       {/* Composer */}
       <div
-        className="sticky bottom-0 p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20"
+        className="fixed md:sticky left-0 right-0 bottom-0 md:left-auto md:right-auto md:bottom-auto p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
       >
-        {/* Editing banner */}
         {editingId && (
           <div className="mb-2 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
             <span className="truncate">Editing message — changes will be visible to everyone</span>
-            <button
-              onClick={cancelEdit}
-              className="ml-2 rounded px-2 py-1 text-[11px] font-semibold hover:bg-amber-100"
-            >
+            <button onClick={cancelEdit} className="ml-2 rounded px-2 py-1 text-[11px] font-semibold hover:bg-amber-100">
               Cancel
             </button>
           </div>
@@ -549,31 +594,15 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         )}
 
         <form onSubmit={send} className="flex items-center gap-2">
-          {/* Emoji */}
-          <button
-            type="button"
-            onClick={() => setShowEmoji((v) => !v)}
-            className="text-xl"
-          >
+          <button type="button" onClick={() => setShowEmoji((v) => !v)} className="text-xl">
             😊
           </button>
 
-        {/* File input */}
-          <input
-            ref={fileRef}
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
+          <button type="button" onClick={() => fileRef.current?.click()} className="text-gray-500 hover:text-gray-700">
             <PaperClipIcon className="h-6 w-6" />
           </button>
 
-          {/* Text input */}
           <input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
@@ -586,13 +615,11 @@ const PrivateChatBox = ({ conversation, onBack }) => {
             "
           />
 
-          {/* Send */}
           <button type="submit" className="text-primary hover:text-primary-hover" title={editingId ? "Save edit" : "Send"}>
             <PaperAirplaneIcon className="h-6 w-6" />
           </button>
         </form>
 
-        {/* Attachments preview */}
         {attachments.length > 0 && !editingId && (
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             {attachments.map((a, i) => (
@@ -617,20 +644,43 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         )}
       </div>
 
-      {/* Fullscreen Preview */}
+      {/* Fullscreen Preview with Close button */}
       {preview && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000]"
           onClick={() => setPreview(null)}
         >
+          <button
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-gray-800 shadow-lg flex items-center justify-center text-lg"
+            aria-label="Close preview"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPreview(null);
+            }}
+          >
+            ✕
+          </button>
+
           {preview.type === "image" && (
             <img src={preview.url} alt={preview.name || "image"} className="max-h-[90vh] max-w-[90vw] rounded" />
           )}
           {preview.type === "video" && (
-            <video src={preview.url} controls autoPlay className="max-h-[90vh] max-w-[90vw] rounded" />
+            <video
+              src={preview.url}
+              controls
+              autoPlay
+              className="max-h-[90vh] max-w-[90vw] rounded"
+              onClick={(e) => e.stopPropagation()}
+            />
           )}
           {preview.type === "audio" && (
-            <audio src={preview.url} controls autoPlay className="w-full max-w-[80vw]" />
+            <audio
+              src={preview.url}
+              controls
+              autoPlay
+              className="w-full max-w-[80vw]"
+              onClick={(e) => e.stopPropagation()}
+            />
           )}
         </div>
       )}

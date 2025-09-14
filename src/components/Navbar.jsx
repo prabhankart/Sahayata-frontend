@@ -20,8 +20,9 @@ function useClickOutside(ref, callback) {
     const handle = (e) => {
       if (ref.current && !ref.current.contains(e.target)) callback?.();
     };
-    document.addEventListener("pointerdown", handle, { passive: true });
-    return () => document.removeEventListener("pointerdown", handle);
+    // ✅ use 'click' so item onClick runs first
+    document.addEventListener("click", handle);
+    return () => document.removeEventListener("click", handle);
   }, [ref, callback]);
 }
 
@@ -62,12 +63,9 @@ export default function Navbar() {
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
-  const langMenuRef = useRef(null);            // desktop dropdown anchor
-  const langMenuRefMobile = useRef(null);      // mobile dropdown anchor
+  const langMenuRef = useRef(null);
   const friendMenuRef = useRef(null);
-
   useClickOutside(langMenuRef, () => setIsLangMenuOpen(false));
-  useClickOutside(langMenuRefMobile, () => setIsLangMenuOpen(false));
   useClickOutside(friendMenuRef, () => setIsFriendDropdownOpen(false));
 
   const languageCodes = ["en","hi","es","mr","gu","bn","ta","te","kn","pa","ur"];
@@ -77,6 +75,15 @@ export default function Navbar() {
     i18n.changeLanguage(code);
     try { window.localStorage.setItem("lang", code); } catch {}
     setIsLangMenuOpen(false);
+  };
+
+  // Normalize current language code for selects (e.g., "en-US" -> "en")
+  const currentLang = languageCodes.includes(i18n.language)
+    ? i18n.language
+    : (i18n.language?.split("-")?.[0] ?? "en");
+
+  const handleLangSelectMobile = (e) => {
+    changeLang(e.target.value);
   };
 
   // keep friend badge fresh
@@ -110,6 +117,7 @@ export default function Navbar() {
   };
 
   const firstName = user?.name?.split(" ")?.[0] || user?.name || "";
+  const langLabel = t("actions.language", { defaultValue: "Language" });
 
   return (
     <header className="sticky top-0 z-50">
@@ -144,7 +152,7 @@ export default function Navbar() {
             <NavItem to="/groups">{t("nav.groups")}</NavItem>
           </nav>
 
-          {/* Right actions (desktop) */}
+          {/* Right actions */}
           <div className="hidden md:flex items-center gap-2">
             <Link to="/help" className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition" aria-label={t("actions.help")}>
               <QuestionMarkCircleIcon className="h-6 w-6 text-gray-500" />
@@ -155,13 +163,16 @@ export default function Navbar() {
               <button
                 onClick={() => setIsLangMenuOpen((v) => !v)}
                 className="rounded-md p-2 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
-                aria-label="Language"
-                title="Language"
+                aria-label={langLabel}
+                title={langLabel}
               >
                 <GlobeAltIcon className="h-6 w-6 text-gray-500" />
               </button>
               {isLangMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100 z-50">
+                <div
+                  className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl bg-white shadow-md border border-gray-100"
+                  onMouseDown={(e) => e.stopPropagation()} // ✅ prevent closing before click
+                >
                   {languages.map((l) => (
                     <button
                       key={l.code}
@@ -169,7 +180,7 @@ export default function Navbar() {
                       className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                     >
                       <span>{l.label}</span>
-                      {i18n.language === l.code && <span>✓</span>}
+                      {(i18n.language === l.code || currentLang === l.code) && <span>✓</span>}
                     </button>
                   ))}
                 </div>
@@ -237,35 +248,8 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile header actions: Language + Menu */}
-          <div className="md:hidden flex items-center gap-1">
-            {/* Language (mobile header) */}
-            <div className="relative" ref={langMenuRefMobile}>
-              <button
-                onClick={() => setIsLangMenuOpen((v) => !v)}
-                className="rounded-md p-2 text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
-                aria-label="Language"
-                title="Language"
-              >
-                <GlobeAltIcon className="h-6 w-6 text-gray-500" />
-              </button>
-              {isLangMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 max-w-[90vw] max-h-[60vh] overflow-auto rounded-xl bg-white shadow-md border border-gray-100 z-50">
-                  {languages.map((l) => (
-                    <button
-                      key={l.code}
-                      onClick={() => changeLang(l.code)}
-                      className="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <span>{l.label}</span>
-                      {i18n.language === l.code && <span>✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Mobile toggle */}
+          {/* Mobile toggle */}
+          <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen((v) => !v)}
               className="rounded-md p-2 text-gray-600 hover:bg-gray-50 border border-transparent hover:border-gray-200 transition"
@@ -286,6 +270,26 @@ export default function Navbar() {
             <NavLink to="/connect" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("nav.connect")}</NavLink>
             <NavLink to="/groups" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("nav.groups")}</NavLink>
 
+            {/* ✅ Mobile Language Picker */}
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-gray-100 bg-white px-3 py-2">
+              <div className="flex items-center gap-2">
+                <GlobeAltIcon className="h-5 w-5 text-gray-500" />
+                <span className="font-semibold text-gray-700">{langLabel}</span>
+              </div>
+              <select
+                className="ml-3 w-36 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                value={currentLang}
+                onChange={handleLangSelectMobile}
+                aria-label={langLabel}
+              >
+                {languages.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {user && (
               <>
                 <NavLink to="/create-post" onClick={() => setIsMenuOpen(false)} className="block rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition">{t("actions.createPost")}</NavLink>
@@ -294,7 +298,7 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setIsFriendDropdownOpen((v) => !v)}
-                    className="relative rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition"
+                    className="relative w-full text-left rounded-md px-3 py-2 font-semibold text-gray-700 hover:bg-gray-50 transition"
                   >
                     {t("actions.friendRequests")}
                     {pendingRequestCount > 0 && (
