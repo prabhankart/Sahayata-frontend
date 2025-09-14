@@ -336,13 +336,13 @@ export default function GroupPage() {
         "
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        {/* Messages list */}
+        {/* Messages list with comfy gaps */}
         <div
           ref={listRef}
-          className="flex-1 overflow-y-auto p-3 sm:p-4 overscroll-contain"
+          className="flex-1 overflow-y-auto p-3 sm:p-4 overscroll-contain space-y-3 sm:space-y-4"
         >
           {cursor && (
-            <div className="mb-2 flex justify-center">
+            <div className="flex justify-center">
               <button
                 onClick={loadOlder}
                 disabled={loadingOlder}
@@ -367,7 +367,7 @@ export default function GroupPage() {
 
             return (
               <div key={m._id || m.clientId} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div className={`flex gap-2 ${mine ? "items-end" : "items-start"} max-w-[92%] sm:max-w-[80%]`}>
+                <div className={`flex ${mine ? "items-end" : "items-start"} max-w-[92%] sm:max-w-[80%] gap-3 sm:gap-4`}>
                   {!mine && (
                     <div className="h-9 w-9 shrink-0 rounded-full bg-violet-200 text-violet-800 flex items-center justify-center font-bold">
                       {name?.[0]?.toUpperCase() || "U"}
@@ -376,7 +376,7 @@ export default function GroupPage() {
 
                   <div
                     onClick={() => setReplyTo(m)}
-                    className={`min-w-0 cursor-pointer rounded-2xl px-3 sm:px-4 py-2 shadow-sm border break-words
+                    className={`min-w-0 cursor-pointer rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm border break-words leading-relaxed
                       ${mine
                         ? "bg-gradient-to-r from-primary to-fuchsia-600 text-white border-primary/60"
                         : "bg-white text-gray-900 border-gray-200"}`}
@@ -388,7 +388,7 @@ export default function GroupPage() {
 
                     {m.replyTo && (
                       <div
-                        className={`mb-1 rounded-lg px-2 py-1 text-xs ${
+                        className={`mb-2 rounded-lg px-2 py-1 text-xs ${
                           mine ? "bg-white/15 text-white/90" : "bg-gray-50 text-gray-700"
                         }`}
                       >
@@ -400,7 +400,7 @@ export default function GroupPage() {
                     {m.text && <div className={mine ? "text-white" : "text-gray-900"}>{m.text}</div>}
 
                     {m.attachments?.length > 0 && (
-                      <div className="mt-2 space-y-2">
+                      <div className="mt-2 sm:mt-3 space-y-2">
                         {m.attachments.map((a, i) => (
                           <div key={i}>
                             {a.type === "image" && (
@@ -477,11 +477,11 @@ export default function GroupPage() {
           })}
 
           {Object.keys(typingUsers).length > 0 && (
-            <div className="pt-1 text-xs text-gray-500">{Object.values(typingUsers).join(", ")} typing…</div>
+            <div className="mt-1 sm:mt-2 text-xs text-gray-500">{Object.values(typingUsers).join(", ")} typing…</div>
           )}
         </div>
 
-        {/* Composer - sticky within card (no viewport overflow) */}
+        {/* Composer - sticky within card */}
         <div
           className="sticky bottom-0 z-10 border-t bg-white/95 backdrop-blur p-2 sm:p-3"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}

@@ -9,18 +9,15 @@ import {
   PaperAirplaneIcon,
 } from "@heroicons/react/24/solid";
 import Picker from "emoji-picker-react";
+import VirtualKeyboard from "./VirtualKeyboard";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const socket = io(API_URL, { transports: ["websocket"] });
 
-// Context menu size for clamping inside viewport
 const MENU_W = 220;
 const MENU_H = 260;
-
-// Reactions you want to support
 const REACTION_SET = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
-// Time formatter: "Just now" < 60s, then "3:27 PM"
 const humanTime = (dt) => {
   if (!dt) return "";
   const d = new Date(dt);
@@ -35,17 +32,13 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
 
-  // Context menu: { x, y, msg }
   const [contextMenu, setContextMenu] = useState(null);
-
-  // Edit state
   const [editingId, setEditingId] = useState(null);
 
   const [attachments, setAttachments] = useState([]);
   const [showEmoji, setShowEmoji] = useState(false);
   const [preview, setPreview] = useState(null);
 
-  // minute ticker to re-render "Just now" → "3:27 PM" etc
   const [, forceTick] = useState(0);
 
   const endRef = useRef(null);
@@ -54,16 +47,19 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   const longPressTimer = useRef(null);
   const menuRef = useRef(null);
 
+  // Soft keyboard
+  const [showSoftKb, setShowSoftKb] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
+
   const other = conversation.participants.find((p) => p._id !== user._id);
   const toBottom = () => endRef.current?.scrollIntoView({ behavior: "smooth" });
 
-  // Rerender every 60s for live time labels
   useEffect(() => {
     const id = setInterval(() => forceTick((x) => x + 1), 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Also nudge to bottom when the mobile keyboard changes viewport height
+  // Keep autoscrolling nicely
   useEffect(() => {
     if (!window.visualViewport) return;
     const onVV = () => requestAnimationFrame(toBottom);
@@ -71,14 +67,13 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     return () => window.visualViewport.removeEventListener("resize", onVV);
   }, []);
 
-  // ----- Load messages + realtime receive
+  // Load + realtime
   useEffect(() => {
     socket.emit("joinConversation", { conversationId: conversation._id });
 
     const onReceive = (m) => {
       if (m.conversation === conversation._id) {
         setMessages((prev) => [...prev, m]);
-        // Mark read if the new message is from other user
         const mine = (m.sender?._id || m.sender) === user._id;
         if (!mine) {
           socket.emit("conversation:markRead", {
@@ -97,7 +92,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
         setMessages(data.data || []);
-        // After loading, tell server we viewed them
         socket.emit("conversation:markRead", {
           conversationId: conversation._id,
           userId: user._id,
@@ -112,11 +106,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     };
   }, [conversation._id, user.token, user._id]);
 
-  // Listen for read receipts -> flip ✓ → ✓✓ in real-time
   useEffect(() => {
     const onRead = ({ conversationId, readerId }) => {
       if (conversationId !== conversation._id) return;
-      // If the other user read messages, update readBy on all of my messages
       if (readerId && readerId !== user._id) {
         setMessages((prev) =>
           prev.map((m) => {
@@ -135,13 +127,12 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
   useEffect(toBottom, [messages]);
 
-  // ----- Global closes: scroll / escape / outside
   useEffect(() => {
     const onScroll = () => setContextMenu(null);
     const onKey = (e) => {
       if (e.key === "Escape") {
         setContextMenu(null);
-        setPreview(null); // close preview with Esc
+        setPreview(null);
         if (editingId) cancelEdit();
       }
     };
@@ -164,7 +155,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     };
   }, [contextMenu, editingId]);
 
-  // ----- Realtime delete/edit/react from others
   useEffect(() => {
     const onDelete = ({ messageId, mode }) => {
       if (mode === "all") {
@@ -201,7 +191,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     };
   }, []);
 
-  // ----- Uploads
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -233,7 +222,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     }
   };
 
-  // ----- Delete
   const deleteMessage = async (msgId, mode) => {
     try {
       await axios.delete(`${API_URL}/api/messages/${msgId}/${mode}`, {
@@ -257,7 +245,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     }
   };
 
-  // ----- Edit
   const startEdit = (msg) => {
     if (msg.deletedForEveryone) return;
     if ((msg.sender?._id || msg.sender) !== user._id) return;
@@ -276,7 +263,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     setNewMessage("");
   };
 
-  // ----- Reactions (toggle)
   const toggleReaction = async (msg, emoji) => {
     try {
       const { data } = await axios.patch(
@@ -301,7 +287,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     }
   };
 
-  // Group reactions -> [{emoji, count, mine}]
   const summarizeReactions = (reactions = []) => {
     const map = new Map();
     for (const r of reactions) {
@@ -314,9 +299,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
   };
 
-  // ----- Send (create or edit)
+  // Send (also callable from virtual keyboard)
   const send = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     const text = newMessage.trim();
 
     if (editingId) {
@@ -358,8 +343,8 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     setAttachments([]);
     setShowEmoji(false);
   };
+  const sendFromVK = () => send({ preventDefault: () => {} });
 
-  // helper
   const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
   return (
@@ -382,8 +367,8 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         className="flex-1 min-h-0 overflow-y-auto p-4 bg-gray-50 overscroll-contain"
         style={{
           WebkitOverflowScrolling: "touch",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 110px)",
-          scrollPaddingBottom: "120px",
+          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${110 + (showSoftKb ? kbHeight : 0)}px)`,
+          scrollPaddingBottom: "140px",
         }}
       >
         {messages.map((msg) => {
@@ -421,7 +406,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                     : "bg-white border border-gray-200 text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
                 }`}
               >
-                {/* Text */}
                 {msg.text && (
                   <div className="whitespace-pre-wrap break-words">
                     {msg.text}
@@ -437,7 +421,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                   </div>
                 )}
 
-                {/* Attachments */}
                 {msg.attachments?.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {msg.attachments.map((a, idx) => (
@@ -468,7 +451,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                   </div>
                 )}
 
-                {/* Reaction summary */}
                 {summary.length > 0 && (
                   <div className={`mt-2 flex flex-wrap gap-1 ${mine ? "justify-end" : "justify-start"}`}>
                     {summary.map((r) => (
@@ -492,7 +474,6 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                   </div>
                 )}
 
-                {/* Footer: time + read ticks */}
                 <div
                   className={`mt-1 flex items-center gap-1 text-[10px] ${
                     mine ? "justify-end text-white/80" : "justify-start text-gray-500"
@@ -514,7 +495,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         <div ref={endRef} />
       </div>
 
-      {/* Context menu overlay + menu */}
+      {/* Context menu */}
       {contextMenu && (
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setContextMenu(null)} />
@@ -584,7 +565,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         </>
       )}
 
-      {/* Composer (sticky, not fixed) */}
+      {/* Composer */}
       <div
         className="sticky bottom-0 p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20 shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.15)]"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
@@ -605,20 +586,52 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         )}
 
         <form onSubmit={send} className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowEmoji((v) => !v)} className="text-xl">
+          <button type="button" onClick={() => setShowEmoji((v) => !v)} className="text-xl" aria-label="Emoji">
             😊
           </button>
 
           <input ref={fileRef} type="file" className="hidden" onChange={handleFileUpload} />
-          <button type="button" onClick={() => fileRef.current?.click()} className="text-gray-500 hover:text-gray-700">
+          <button type="button" onClick={() => fileRef.current?.click()} className="text-gray-500 hover:text-gray-700" aria-label="Attach">
             <PaperClipIcon className="h-6 w-6" />
+          </button>
+
+          {/* Toggle our soft keyboard */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowSoftKb((v) => !v);
+              setTimeout(() => {
+                if (!showSoftKb) inputRef.current?.blur();
+              }, 0);
+            }}
+            className="text-gray-600 hover:text-gray-800"
+            aria-label="Toggle keyboard"
+            title="Toggle keyboard"
+          >
+            ⌨️
           </button>
 
           <input
             ref={inputRef}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            onFocus={() => setTimeout(toBottom, 0)}
+            onFocus={() => {
+              if (showSoftKb) {
+                // keep OS keyboard closed
+                inputRef.current?.blur();
+              } else {
+                setTimeout(toBottom, 0);
+              }
+            }}
+            onTouchStart={(e) => {
+              if (showSoftKb) {
+                e.preventDefault();
+                inputRef.current?.blur();
+              }
+            }}
+            readOnly={showSoftKb}
+            inputMode={showSoftKb ? "none" : "text"}
+            enterKeyHint="send"
             placeholder={editingId ? "Edit your message…" : "Type a message…"}
             className="
               flex-1 rounded-2xl border px-3 py-2
@@ -657,7 +670,18 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         )}
       </div>
 
-      {/* Fullscreen Preview with Close button */}
+      {/* Our virtual keyboard (sticks under composer) */}
+      <VirtualKeyboard
+        visible={showSoftKb}
+        onHeightChange={setKbHeight}
+        onHide={() => setShowSoftKb(false)}
+        onEnter={sendFromVK}
+        onSpace={() => setNewMessage((v) => v + " ")}
+        onBackspace={() => setNewMessage((v) => v.slice(0, -1))}
+        onInput={(ch) => setNewMessage((v) => v + ch)}
+      />
+
+      {/* Fullscreen Preview */}
       {preview && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-[10000]"
