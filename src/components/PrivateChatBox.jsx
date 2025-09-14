@@ -50,16 +50,28 @@ const PrivateChatBox = ({ conversation, onBack }) => {
   // Soft keyboard
   const [showSoftKb, setShowSoftKb] = useState(false);
   const [kbHeight, setKbHeight] = useState(0);
+  const composerRef = useRef(null);
+  const [composerH, setComposerH] = useState(64);
 
   const other = conversation.participants.find((p) => p._id !== user._id);
   const toBottom = () => endRef.current?.scrollIntoView({ behavior: "smooth" });
+
+  // measure composer height
+  useEffect(() => {
+    if (!composerRef.current) return;
+    const ro = new ResizeObserver(() => {
+      setComposerH(composerRef.current?.offsetHeight || 64);
+    });
+    ro.observe(composerRef.current);
+    setComposerH(composerRef.current?.offsetHeight || 64);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => forceTick((x) => x + 1), 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Keep autoscrolling nicely
   useEffect(() => {
     if (!window.visualViewport) return;
     const onVV = () => requestAnimationFrame(toBottom);
@@ -228,7 +240,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         headers: { Authorization: `Bearer ${user.token}` },
       });
 
-      if (mode === "me") {
+    if (mode === "me") {
         setMessages((prev) => prev.filter((m) => m._id !== msgId));
       } else if (mode === "all") {
         setMessages((prev) =>
@@ -299,29 +311,22 @@ const PrivateChatBox = ({ conversation, onBack }) => {
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
   };
 
-  // Send (also callable from virtual keyboard)
+  // Send
   const send = async (e) => {
     if (e?.preventDefault) e.preventDefault();
     const text = newMessage.trim();
 
     if (editingId) {
-      if (!text) {
-        toast.error("Message cannot be empty.");
-        return;
-      }
+      if (!text) return toast.error("Message cannot be empty.");
       try {
         await axios.patch(
           `${API_URL}/api/messages/${editingId}`,
           { text },
           { headers: { Authorization: `Bearer ${user.token}` } }
         );
-
         setMessages((prev) =>
-          prev.map((m) =>
-            m._id === editingId ? { ...m, text, edited: true } : m
-          )
+          prev.map((m) => (m._id === editingId ? { ...m, text, edited: true } : m))
         );
-
         socket.emit("editMessage", { messageId: editingId, text });
         cancelEdit();
       } catch {
@@ -347,6 +352,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
 
   const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
+  // safe-area bottom used by messages pad & composer
+  const safePad = "calc(env(safe-area-inset-bottom, 0px) + 8px)";
+
   return (
     <div className="flex flex-col h-[var(--app-dvh,100dvh)] relative overscroll-contain">
       {/* Header */}
@@ -367,7 +375,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         className="flex-1 min-h-0 overflow-y-auto p-4 bg-gray-50 overscroll-contain"
         style={{
           WebkitOverflowScrolling: "touch",
-          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${110 + (showSoftKb ? kbHeight : 0)}px)`,
+          paddingBottom: `calc(${composerH}px + ${showSoftKb ? kbHeight : 0}px + ${safePad})`,
           scrollPaddingBottom: "140px",
         }}
       >
@@ -411,9 +419,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                     {msg.text}
                     {msg.edited && !isDeleted && (
                       <span
-                        className={`ml-2 text-[10px] ${
-                          mine ? "text-white/80" : "text-gray-500"
-                        }`}
+                        className={`ml-2 text-[10px] ${mine ? "text-white/80" : "text-gray-500"}`}
                       >
                         (edited)
                       </span>
@@ -482,9 +488,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
                   <span>{humanTime(msg.createdAt || msg._createdAt || msg.time)}</span>
                   {mine && (
                     <span className="leading-none">
-                      {(msg.readBy || []).some((id) => (id?._id || id) === other?._id)
-                        ? "✓✓"
-                        : "✓"}
+                      {(msg.readBy || []).some((id) => (id?._id || id) === other?._id) ? "✓✓" : "✓"}
                     </span>
                   )}
                 </div>
@@ -565,10 +569,14 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         </>
       )}
 
-      {/* Composer */}
+      {/* Composer — fixed when VK open, sticky otherwise */}
       <div
-        className="sticky bottom-0 p-3 bg-white/95 border-t dark:bg-gray-900/95 z-20 shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.15)]"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
+        ref={composerRef}
+        className={`${showSoftKb ? "fixed left-0 right-0" : "sticky"} bottom-0 p-3 bg-white/95 border-t dark:bg-gray-900/95 z-40 shadow-[0_-6px_12px_-8px_rgba(0,0,0,0.15)]`}
+        style={{
+          bottom: showSoftKb ? kbHeight : 0,
+          paddingBottom: safePad,
+        }}
       >
         {editingId && (
           <div className="mb-2 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -595,15 +603,9 @@ const PrivateChatBox = ({ conversation, onBack }) => {
             <PaperClipIcon className="h-6 w-6" />
           </button>
 
-          {/* Toggle our soft keyboard */}
           <button
             type="button"
-            onClick={() => {
-              setShowSoftKb((v) => !v);
-              setTimeout(() => {
-                if (!showSoftKb) inputRef.current?.blur();
-              }, 0);
-            }}
+            onClick={() => setShowSoftKb((v) => !v)}
             className="text-gray-600 hover:text-gray-800"
             aria-label="Toggle keyboard"
             title="Toggle keyboard"
@@ -616,12 +618,10 @@ const PrivateChatBox = ({ conversation, onBack }) => {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onFocus={() => {
-              if (showSoftKb) {
-                // keep OS keyboard closed
-                inputRef.current?.blur();
-              } else {
-                setTimeout(toBottom, 0);
-              }
+              // Prefer our virtual keyboard; keep OS one hidden
+              setShowSoftKb(true);
+              requestAnimationFrame(() => inputRef.current?.blur());
+              setTimeout(toBottom, 0);
             }}
             onTouchStart={(e) => {
               if (showSoftKb) {
@@ -670,7 +670,7 @@ const PrivateChatBox = ({ conversation, onBack }) => {
         )}
       </div>
 
-      {/* Our virtual keyboard (sticks under composer) */}
+      {/* Virtual keyboard (fixed at bottom) */}
       <VirtualKeyboard
         visible={showSoftKb}
         onHeightChange={setKbHeight}

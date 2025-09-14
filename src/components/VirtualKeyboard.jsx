@@ -1,16 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * VirtualKeyboard v2 — Multi-language (HI, MR, AWA, BHO, GU, BN, TA, TE, KN, EN)
+ * VirtualKeyboard v2 — Multi-language & fully responsive
+ * Languages: Hindi, Marathi, Awadhi, Bhojpuri (Devanagari), Gujarati, Bengali, Tamil, Telugu, Kannada, English
  *
  * Props:
- * - visible: boolean
- * - onInput(char)
- * - onBackspace()
- * - onEnter()
- * - onSpace()
- * - onHide()
- * - onHeightChange(h:number)
+ *  visible, onInput(char), onBackspace(), onEnter(), onSpace(), onHide(), onHeightChange(h:number)
  */
 export default function VirtualKeyboard({
   visible,
@@ -22,7 +17,7 @@ export default function VirtualKeyboard({
   onHeightChange,
 }) {
   const LANGS = useMemo(
-    () => ([
+    () => [
       { code: "hi", label: "हिन्दी", group: "dev" },
       { code: "mr", label: "मराठी", group: "dev" },
       { code: "awa", label: "अवधी", group: "dev" },
@@ -33,13 +28,14 @@ export default function VirtualKeyboard({
       { code: "te", label: "తెలుగు", group: "tel" },
       { code: "kn", label: "ಕನ್ನಡ", group: "kan" },
       { code: "en", label: "English", group: "lat" },
-    ]), []
+    ],
+    []
   );
 
   const pickInitialLang = () => {
     try {
       const saved = window.localStorage.getItem("vk_lang");
-      if (saved && LANGS.some(l => l.code === saved)) return saved;
+      if (saved && LANGS.some((l) => l.code === saved)) return saved;
     } catch {}
     return "hi";
   };
@@ -47,7 +43,7 @@ export default function VirtualKeyboard({
   const [lang, setLang] = useState(pickInitialLang);
   const [mode, setMode] = useState("letters"); // letters | matras | numbers
   const [shift, setShift] = useState(false);
-  const [altPad, setAltPad] = useState(null);  // {x,y, options:[], key?:string}
+  const [altPad, setAltPad] = useState(null); // {x,y, options:[]}
   const rootRef = useRef(null);
   const repeatTimer = useRef(null);
   const longPressTimer = useRef(null);
@@ -66,32 +62,36 @@ export default function VirtualKeyboard({
     return () => ro.disconnect();
   }, [visible, onHeightChange]);
 
-  // Persist language
+  // Persist chosen language
   useEffect(() => {
-    try { window.localStorage.setItem("vk_lang", lang); } catch {}
+    try {
+      window.localStorage.setItem("vk_lang", lang);
+    } catch {}
   }, [lang]);
 
   const buzz = (ms = 8) => {
-    try { window.navigator?.vibrate?.(ms); } catch {}
+    try {
+      navigator?.vibrate?.(ms);
+    } catch {}
   };
 
-  // --------- LAYOUTS ---------
-  // Devanagari (HI/MR/AWA/BHO)
+  // ---------- LAYOUTS ----------
+  // Devanagari (hi/mr/awa/bho)
   const DEV_LETTERS = [
     ["क","ख","ग","घ","ङ","च","छ","ज","झ","ञ"],
     ["ट","ठ","ड","ढ","ण","त","थ","द","ध","न"],
-    ["प","फ","ब","भ","म","य","र","ल","व","back"],
-    ["shift","श","ष","स","ह","ऽ","।","space","enter","hide"],
+    ["shift","प","फ","ब","भ","म","य","र","ल","back"],
+    ["श","ष","स","ह","ऽ","।","matras","space","enter","hide"],
   ];
   const DEV_ALTS = {
     "क":["क़","क्ष"], "ख":["ख़"], "ग":["ग़"], "ज":["ज़","ज्ञ"], "ड":["ड़"], "ढ":["ढ़"],
-    "फ":["फ़"], "र":["ऱ"], "ल":["ळ"], "स":["श","ष"], "त":["त्र"], "।":["॥"], "ह":["ॐ"]
+    "फ":["फ़"], "र":["ऱ"], "ल":["ळ"], "।":["॥"], "ह":["ॐ"], "श":["ष","स"], "त":["त्र"]
   };
   const DEV_MATRAS = [
     ["ा","ि","ी","ु","ू","ृ","े","ै","ो","ौ"],
-    ["ं","ँ","ः","ॅ","ॉ","्","़","।","॥","ॐ"],
-    ["ABC","digits","back"],
-    [",","space",".","enter","hide"],
+    ["ं","ँ","ः","ॅ","ॉ","्","़","।","॥","back"],
+    ["ABC","digits","hide"],
+    [",","space",".","enter"],
   ];
   const DEV_NUMBERS = [
     ["1","2","3","4","5","6","7","8","9","0"],
@@ -104,8 +104,8 @@ export default function VirtualKeyboard({
   const GUJ_LETTERS = [
     ["ક","ખ","ગ","ઘ","ઙ","ચ","છ","જ","ઝ","ઞ"],
     ["ટ","ઠ","ડ","ઢ","ણ","ત","થ","દ","ધ","ન"],
-    ["પ","ફ","બ","ભ","મ","ય","ર","લ","વ","back"],
-    ["shift","શ","ષ","સ","હ","ઽ","।","space","enter","hide"],
+    ["shift","પ","ફ","બ","ભ","મ","ય","ર","લ","back"],
+    ["શ","ષ","સ","હ","ઽ","।","matras","space","enter","hide"],
   ];
   const GUJ_ALTS = { "ર":["઱"], "લ":["ળ"], "।":["॥"] };
   const GUJ_MATRAS = [
@@ -120,8 +120,8 @@ export default function VirtualKeyboard({
   const BEN_LETTERS = [
     ["ক","খ","গ","ঘ","ঙ","চ","ছ","জ","ঝ","ঞ"],
     ["ট","ঠ","ড","ঢ","ণ","ত","থ","দ","ধ","ন"],
-    ["প","ফ","ব","ভ","ম","য","র","ল","ৱ","back"],
-    ["shift","শ","ষ","স","হ","ড়","ঢ়","space","enter","hide"],
+    ["shift","প","ফ","ব","ভ","ম","য","র","ল","back"],
+    ["শ","ষ","স","হ","ড়","ঢ়","matras","space","enter","hide"],
   ];
   const BEN_ALTS = { "র":["ড়","ঢ়"], "য":["য়"], "স":["শ","ষ"] };
   const BEN_MATRAS = [
@@ -136,8 +136,8 @@ export default function VirtualKeyboard({
   const TAM_LETTERS = [
     ["அ","ஆ","இ","ஈ","உ","ஊ","எ","ஏ","ஐ","ஒ"],
     ["ஓ","ஔ","க","ங","ச","ஞ","ட","ண","த","ந"],
-    ["ப","ம","ய","ர","ல","வ","ழ","ள","ற","back"],
-    ["shift","ஸ","ஹ","ஜ","க்ஷ","ஃ","·","space","enter","hide"],
+    ["shift","ப","ம","ய","ர","ல","வ","ழ","ள","back"],
+    ["ற","ஸ","ஹ","ஜ","ஃ","·","matras","space","enter","hide"],
   ];
   const TAM_ALTS = { "·":["।","॥"] };
   const TAM_MATRAS = [
@@ -151,10 +151,10 @@ export default function VirtualKeyboard({
   // Telugu
   const TEL_LETTERS = [
     ["అ","ఆ","ఇ","ఈ","ఉ","ఊ","ఎ","ఏ","ఐ","ఒ"],
-    ["ఓ","ఔ","క","ఖ","గ","ఘ","ఙ","చ","ఛ","జ"],
-    ["ఝ","ట","ఠ","డ","ఢ","ణ","త","థ","ద","back"],
-    ["ధ","న","ప","ఫ","బ","భ","మ","య","ర","ల"],
-    ["వ","శ","ష","స","హ","ఱ","space","enter","hide"],
+    ["ఓ","ఔ","క","ఖ","గ","ఘ","ఙ","చ","ఛ"],
+    ["shift","జ","ఝ","ట","ఠ","డ","ఢ","ణ","back"],
+    ["త","థ","ద","ధ","న","ప","ఫ","బ","మ","య"],
+    ["ర","ల","వ","శ","ష","స","హ","ఱ","space","hide"],
   ];
   const TEL_ALTS = {};
   const TEL_MATRAS = [
@@ -168,10 +168,10 @@ export default function VirtualKeyboard({
   // Kannada
   const KAN_LETTERS = [
     ["ಅ","ಆ","ಇ","ಈ","ಉ","ಊ","ಎ","ಏ","ಐ","ಒ"],
-    ["ಓ","ಔ","ಕ","ಖ","ಗ","ಘ","ಙ","ಚ","ಛ","ಜ"],
-    ["ಝ","ಟ","ಠ","ಡ","ಢ","ಣ","ತ","ಥ","ದ","back"],
-    ["ಧ","ನ","ಪ","ಫ","ಬ","ಭ","ಮ","ಯ","ರ","ಲ"],
-    ["ವ","ಶ","ಷ","ಸ","ಹ","ಳ","space","enter","hide"],
+    ["ಓ","ಔ","ಕ","ಖ","ಗ","ಘ","ಙ","ಚ","ಛ"],
+    ["shift","ಜ","ಝ","ಟ","ಠ","ಡ","ಢ","ಣ","back"],
+    ["ತ","ಥ","ದ","ಧ","ನ","ಪ","ಫ","ಬ","ಮ","ಯ"],
+    ["ರ","ಲ","ವ","ಶ","ಷ","ಸ","ಹ","ಳ","space","hide"],
   ];
   const KAN_ALTS = {};
   const KAN_MATRAS = [
@@ -182,14 +182,17 @@ export default function VirtualKeyboard({
   ];
   const KAN_NUMBERS = DEV_NUMBERS;
 
-  // Latin fallback
+  // Latin
   const LAT_LETTERS = [
     ["q","w","e","r","t","y","u","i","o","p"],
     ["a","s","d","f","g","h","j","k","l"],
     ["shift","z","x","c","v","b","n","m","back"],
     ["123",",","space",".","enter","hide"],
   ];
-  const LAT_ALTS = { "a":["á","à","â","ä","ã","å","ā"], "e":["é","è","ê","ë","ē"], "i":["í","ì","î","ï","ī"], "o":["ó","ò","ô","ö","õ","ō"], "u":["ú","ù","û","ü","ū"], "c":["ç"], "n":["ñ"] };
+  const LAT_ALTS = {
+    a:["á","à","â","ä","ã","å","ā"], e:["é","è","ê","ë","ē"], i:["í","ì","î","ï","ī"],
+    o:["ó","ò","ô","ö","õ","ō"], u:["ú","ù","û","ü","ū"], c:["ç"], n:["ñ"]
+  };
   const LAT_NUMBERS = DEV_NUMBERS;
 
   const byGroup = (g) => {
@@ -200,43 +203,35 @@ export default function VirtualKeyboard({
       case "tam": return { letters: TAM_LETTERS, matras: TAM_MATRAS, numbers: TAM_NUMBERS, alts: TAM_ALTS };
       case "tel": return { letters: TEL_LETTERS, matras: TEL_MATRAS, numbers: TEL_NUMBERS, alts: TEL_ALTS };
       case "kan": return { letters: KAN_LETTERS, matras: KAN_MATRAS, numbers: KAN_NUMBERS, alts: KAN_ALTS };
-      default: return { letters: LAT_LETTERS, matras: LAT_LETTERS, numbers: LAT_NUMBERS, alts: LAT_ALTS };
+      default:    return { letters: LAT_LETTERS, matras: LAT_LETTERS, numbers: LAT_NUMBERS, alts: LAT_ALTS };
     }
   };
 
   const current = useMemo(() => {
-    const group = LANGS.find(l => l.code === lang)?.group || "lat";
+    const group = LANGS.find((l) => l.code === lang)?.group || "lat";
     return byGroup(group);
-  }, [lang, LANGS]);
+  }, [lang]);
 
-  // Mode rows
-  const rows = mode === "letters" ? current.letters
-             : mode === "matras"   ? current.matras
-             : current.numbers;
+  const rows = mode === "letters" ? current.letters : mode === "matras" ? current.matras : current.numbers;
 
-  // --------- actions ----------
+  // ---------- actions ----------
   const pressChar = (k) => {
     if (!k) return;
-    // controls:
     if (k === "back") return onBackspace?.();
     if (k === "enter") return onEnter?.();
     if (k === "space") return onSpace?.();
-    if (k === "shift") { setShift(v => !v); return; }
+    if (k === "shift") return setShift((v) => !v);
     if (k === "hide") return onHide?.();
-    if (k === "123" || k === "digits") { setMode("numbers"); return; }
-    if (k === "ABC") { setMode("letters"); return; }
+    if (k === "123" || k === "digits") return setMode("numbers");
+    if (k === "ABC") return setMode("letters");
+    if (k === "matras") return setMode("matras");
 
-    // "letters" <-> "matras" switcher present in dev/others via special keys:
-    if (k === "matras") { setMode("matras"); return; }
-
-    // regular char
     const ch = shift && k.length === 1 ? k.toUpperCase() : k;
     onInput?.(ch);
     buzz();
     if (shift) setShift(false);
   };
 
-  // hold backspace
   const holdBackspaceStart = () => {
     onBackspace?.();
     clearInterval(repeatTimer.current);
@@ -244,13 +239,11 @@ export default function VirtualKeyboard({
   };
   const holdBackspaceEnd = () => clearInterval(repeatTimer.current);
 
-  // long-press alt
   const openAlt = (key, e) => {
-    const alts = current.alts?.[key];
+    const alts = (current.alts || {})[key];
     if (!alts || !alts.length) return;
     const rect = e.currentTarget.getBoundingClientRect();
     setAltPad({
-      key,
       options: alts,
       x: rect.left + rect.width / 2,
       y: rect.top - 8,
@@ -258,36 +251,44 @@ export default function VirtualKeyboard({
   };
   const closeAlt = () => setAltPad(null);
 
-  // Render nothing if hidden
   if (!visible) return null;
+
+  // clamp helper for alt pad
+  const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
   return (
     <div
       ref={rootRef}
-      className="sticky bottom-0 z-30 w-full border-t border-gray-200 bg-white dark:bg-gray-900 shadow-[0_-10px_24px_-12px_rgba(0,0,0,0.25)]"
+      className="fixed inset-x-0 bottom-0 z-30 w-full border-t border-gray-200 bg-white dark:bg-gray-900 shadow-[0_-10px_24px_-12px_rgba(0,0,0,0.25)]"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom,0px) + 8px)" }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* Language chips */}
       <div className="px-2 pt-2">
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {LANGS.map(l => (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {LANGS.map((l) => (
             <button
               key={l.code}
               className={[
                 "px-3 py-1 rounded-full text-sm whitespace-nowrap border transition",
-                lang === l.code ? "bg-violet-600 text-white border-violet-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700"
+                lang === l.code
+                  ? "bg-violet-600 text-white border-violet-600"
+                  : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700",
               ].join(" ")}
-              onClick={() => { setLang(l.code); setMode("letters"); buzz(5); }}
+              onClick={() => {
+                setLang(l.code);
+                setMode("letters");
+                buzz(5);
+              }}
               title={l.label}
             >
               {l.label}
             </button>
           ))}
-          {/* Quick mode toggle (for Devanagari scripts etc.) */}
+
           <button
             className="ml-auto px-3 py-1 rounded-full text-sm border bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-100 border-gray-200 dark:border-gray-700"
-            onClick={() => setMode(m => m === "letters" ? "matras" : "letters")}
+            onClick={() => setMode((m) => (m === "letters" ? "matras" : "letters"))}
             title="Letters / Matras"
           >
             {mode === "letters" ? "Matras" : "Letters"}
@@ -295,19 +296,26 @@ export default function VirtualKeyboard({
         </div>
       </div>
 
-      {/* ALT Pad */}
+      {/* Alternates pad */}
       {altPad && (
         <div
           className="fixed z-[100]"
-          style={{ left: Math.max(10, altPad.x - 120), top: Math.max(6, altPad.y - 56) }}
+          style={{
+            left: clamp(altPad.x - 120, 10, window.innerWidth - 240),
+            top: clamp(altPad.y - 56, 6, window.innerHeight - 120),
+          }}
           onMouseLeave={closeAlt}
         >
           <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg px-2 py-1 flex gap-1">
-            {altPad.options.map(o => (
+            {altPad.options.map((o) => (
               <button
                 key={o}
                 className="px-3 py-2 rounded-lg text-base font-semibold hover:bg-gray-100 dark:hover:bg-gray-700"
-                onClick={() => { onInput?.(o); closeAlt(); buzz(); }}
+                onClick={() => {
+                  onInput?.(o);
+                  closeAlt();
+                  buzz();
+                }}
               >
                 {o}
               </button>
@@ -316,12 +324,12 @@ export default function VirtualKeyboard({
         </div>
       )}
 
-      {/* Keys */}
-      <div className="mx-auto max-w-3xl px-2 py-2 select-none">
+      {/* Keys (responsive: each key flexes, never overflows) */}
+      <div className="px-2 py-2 select-none">
         {rows.map((row, idx) => (
-          <div key={idx} className="flex justify-center gap-2 mb-2 last:mb-0">
+          <div key={idx} className="flex gap-1.5 mb-1.5 last:mb-0">
             {row.map((key) => {
-              const isWide = key === "space";
+              const isSpace = key === "space";
               const isBack = key === "back";
               const isShift = key === "shift";
               const isEnter = key === "enter";
@@ -330,26 +338,23 @@ export default function VirtualKeyboard({
               const label =
                 key === "back" ? "⌫" :
                 key === "shift" ? (shift ? "⇧" : "⬆") :
-                key === "enter" ? "Send" :
+                key === "enter" ? "↵" :
                 key === "space" ? (lang === "en" ? "Space" : "␣") :
-                key === "hide" ? "Hide" :
-                key === "123" ? "123" :
-                key === "digits" ? "123" :
-                key === "ABC" ? "ABC" :
-                key;
+                key === "hide" ? "⌄" :
+                key === "digits" ? "123" : key;
 
-              const commonBtn =
-                "active:scale-[0.98] transition " +
-                "rounded-xl border text-base font-semibold " +
+              const base =
+                "flex-1 basis-0 min-w-0 text-center active:scale-[0.98] transition " +
+                "rounded-xl border text-[15px] font-semibold " +
                 "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 " +
-                "border-gray-200 dark:border-gray-700 px-3 py-3 shadow-sm";
+                "border-gray-200 dark:border-gray-700 px-2 py-2.5 shadow-sm";
 
               return (
                 <button
                   key={key + idx}
                   className={[
-                    commonBtn,
-                    isWide ? "flex-1" : "min-w-[46px]",
+                    base,
+                    isSpace ? "flex-[2]" : "",
                     isEnter ? "bg-violet-600 text-white border-violet-600" : "",
                     isBack || isShift || isMode || isHide ? "bg-gray-50 dark:bg-gray-700" : "",
                   ].join(" ")}
@@ -387,7 +392,7 @@ export default function VirtualKeyboard({
         ))}
       </div>
 
-      {/* Bottom mode quick bar */}
+      {/* Bottom quick bar */}
       <div className="px-2 pb-2">
         <div className="flex gap-2">
           {mode !== "numbers" ? (
